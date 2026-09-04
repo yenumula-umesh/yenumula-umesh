@@ -3,7 +3,6 @@ name: Update Profile HUD
 on:
   schedule:
     - cron: "*/15 * * * *"
-
   workflow_dispatch:
 
 permissions:
@@ -11,13 +10,13 @@ permissions:
 
 jobs:
   update-hud:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -40,6 +39,14 @@ jobs:
 
           git add hero-live.png
 
-          git diff --cached --quiet || git commit -m "Update profile HUD"
+          if git diff --cached --quiet; then
+            echo "No changes to hero-live.png"
+            exit 0
+          fi
 
-          git push
+          git commit -m "Update profile HUD"
+
+          git fetch origin main
+          git rebase origin/main
+
+          git push origin HEAD:main

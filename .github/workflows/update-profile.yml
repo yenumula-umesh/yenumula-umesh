@@ -1,16 +1,16 @@
 name: Update Profile HUD
 
 on:
+  workflow_dispatch:
+
   schedule:
     - cron: "*/15 * * * *"
-  workflow_dispatch:
 
 permissions:
   contents: write
 
-# Prevent two HUD updates from running at the same time.
 concurrency:
-  group: profile-hud-update
+  group: profile-hud
   cancel-in-progress: true
 
 jobs:
@@ -29,15 +29,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install Pillow
-        run: |
-          python -m pip install --upgrade pip
-          pip install Pillow
+        run: pip install Pillow
 
-      - name: Generate live profile image
-        run: |
-          python scripts/generate_hud.py
+      - name: Generate HUD
+        run: python scripts/generate_hud.py
 
-      - name: Commit and push updated HUD
+      - name: Commit HUD
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -45,31 +42,37 @@ jobs:
           git add hero-live.png
 
           if git diff --cached --quiet; then
-            echo "No changes to hero-live.png"
+            echo "No changes detected."
             exit 0
           fi
 
           git commit -m "Update profile HUD"
 
-          # Retry the push in case main changes while the workflow is running.
-          for attempt in 1 2 3 4 5; do
-            echo "Push attempt $attempt"
+      - name: Push HUD safely
+        run: |
+          for i in 1 2 3 4 5; do
+            echo "Push attempt $i"
 
             git fetch origin main
 
-            if git rebase origin/main; then
-              if git push origin HEAD:main; then
-                echo "HUD update pushed successfully."
-                exit 0
-              fi
-            else
-              echo "Rebase failed. Aborting rebase."
+            REMOTE_SHA=$(git rev-parse origin/main)
+
+            git rebase origin/main || {
               git rebase --abort || true
+              git reset --hard origin/main
+              python scripts/generate_hud.py
+              git add hero-live.png
+              git commit -m "Update profile HUD" || true
+            }
+
+            if git push --force-with-lease=refs/heads/main:$REMOTE_SHA origin HEAD:main; then
+              echo "HUD pushed successfully."
+              exit 0
             fi
 
-            echo "Push failed. Waiting before retry..."
+            echo "Push failed. Retrying..."
             sleep 5
           done
 
-          echo "Could not push HUD update after 5 attempts."
+          echo "Failed to push HUD after 5 attempts."
           exit 1

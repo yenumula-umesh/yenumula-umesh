@@ -16,14 +16,13 @@ INPUT_IMAGE = BASE_DIR / "hero.png"
 OUTPUT_IMAGE = BASE_DIR / "hero-live.png"
 
 # ============================================================
-# PROFILE
+# PERSONAL INFORMATION
 # ============================================================
 
 NAME = "UMESH YENUMULA"
 TITLE = "DATA ANALYST  ×  AI ENGINEER"
-
+EDUCATION = "BS IN DATA SCIENCE & APPLICATIONS"
 COLLEGE = "IIT MADRAS"
-PROGRAM = "BS IN DATA SCIENCE & APPLICATIONS"
 
 GITHUB_USERNAME = "yenumula-umesh"
 
@@ -40,26 +39,25 @@ SKILLS = [
 ]
 
 # ============================================================
-# HUD COLORS
+# COLORS
 # ============================================================
 
-CYAN = (70, 195, 255, 235)
-CYAN_SOFT = (70, 195, 255, 125)
-CYAN_DIM = (70, 195, 255, 50)
+CYAN = (65, 190, 255, 235)
+CYAN_SOFT = (65, 190, 255, 125)
+CYAN_DIM = (65, 190, 255, 75)
 
-VIOLET = (165, 110, 255, 225)
-VIOLET_SOFT = (165, 110, 255, 105)
+WHITE = (220, 238, 248, 235)
+WHITE_DIM = (170, 200, 215, 180)
 
-GREEN = (70, 255, 175, 235)
+DARK = (3, 12, 20, 160)
+DARK_SOFT = (3, 12, 20, 105)
 
-WHITE = (230, 243, 250, 238)
-WHITE_DIM = (175, 205, 220, 185)
-
-GLASS = (2, 10, 18, 88)
-GLASS_DARK = (2, 10, 18, 115)
+GREEN = (65, 255, 170, 230)
+VIOLET = (155, 100, 255, 210)
+VIOLET_SOFT = (155, 100, 255, 105)
 
 # ============================================================
-# FONT PATHS
+# FONT LOADING
 # ============================================================
 
 FONT_PATHS = [
@@ -88,51 +86,45 @@ def font(size, bold=False):
     path = FONT_BOLD if bold else FONT_REGULAR
 
     if path:
-        return ImageFont.truetype(path, size=size)
+        return ImageFont.truetype(
+            path,
+            size=size,
+        )
 
     return ImageFont.load_default()
 
 
 # ============================================================
-# DRAWING HELPERS
+# HELPERS
 # ============================================================
 
-def line(draw, x1, y1, x2, y2, fill=CYAN_DIM, width=1):
-    draw.line(
-        (x1, y1, x2, y2),
+def rounded_hud(
+    draw,
+    box,
+    radius=16,
+    fill=DARK_SOFT,
+    outline=CYAN_SOFT,
+    width=1,
+):
+    draw.rounded_rectangle(
+        box,
+        radius=radius,
         fill=fill,
+        outline=outline,
         width=width,
-    )
-
-
-def text_label(draw, x, y, text, size=9, fill=WHITE_DIM):
-    draw.text(
-        (x, y),
-        str(text).upper(),
-        font=font(size),
-        fill=fill,
-    )
-
-
-def text_title(draw, x, y, text, size=22, fill=CYAN):
-    draw.text(
-        (x, y),
-        str(text),
-        font=font(size, bold=True),
-        fill=fill,
     )
 
 
 def clipped_panel(
     draw,
     box,
-    cut=14,
-    fill=GLASS,
+    cut=16,
+    fill=DARK_SOFT,
     outline=CYAN_SOFT,
     width=1,
 ):
     """
-    Futuristic transparent panel with cut corners.
+    Transparent futuristic panel with clipped corners.
     """
 
     x1, y1, x2, y2 = box
@@ -161,79 +153,202 @@ def clipped_panel(
     )
 
 
-def corner_marks(draw, box, length=15):
-    """
-    Small technical corner brackets.
-    """
+def line(
+    draw,
+    x1,
+    y1,
+    x2,
+    y2,
+    fill=CYAN_DIM,
+    width=1,
+):
+    draw.line(
+        (x1, y1, x2, y2),
+        fill=fill,
+        width=width,
+    )
 
+
+def label(
+    draw,
+    x,
+    y,
+    text_value,
+    size=12,
+    fill=WHITE_DIM,
+):
+    draw.text(
+        (x, y),
+        str(text_value).upper(),
+        font=font(size),
+        fill=fill,
+    )
+
+
+def title(
+    draw,
+    x,
+    y,
+    text_value,
+    size=26,
+    fill=CYAN,
+):
+    draw.text(
+        (x, y),
+        str(text_value),
+        font=font(
+            size,
+            bold=True,
+        ),
+        fill=fill,
+    )
+
+
+def draw_corner_marks(
+    draw,
+    box,
+    length=18,
+):
     x1, y1, x2, y2 = box
 
-    # top-left
-    line(draw, x1, y1 + length, x1, y1, CYAN_SOFT)
-    line(draw, x1, y1, x1 + length, y1, CYAN_SOFT)
+    # top left
+    line(
+        draw,
+        x1,
+        y1 + length,
+        x1,
+        y1,
+        CYAN_SOFT,
+    )
 
-    # top-right
-    line(draw, x2 - length, y1, x2, y1, VIOLET_SOFT)
-    line(draw, x2, y1, x2, y1 + length, VIOLET_SOFT)
+    line(
+        draw,
+        x1,
+        y1,
+        x1 + length,
+        y1,
+        CYAN_SOFT,
+    )
 
-    # bottom-left
-    line(draw, x1, y2 - length, x1, y2, VIOLET_SOFT)
-    line(draw, x1, y2, x1 + length, y2, VIOLET_SOFT)
+    # top right
+    line(
+        draw,
+        x2 - length,
+        y1,
+        x2,
+        y1,
+        VIOLET_SOFT,
+    )
 
-    # bottom-right
-    line(draw, x2 - length, y2, x2, y2, CYAN_SOFT)
-    line(draw, x2, y2 - length, x2, y2, CYAN_SOFT)
+    line(
+        draw,
+        x2,
+        y1,
+        x2,
+        y1 + length,
+        VIOLET_SOFT,
+    )
+
+    # bottom left
+    line(
+        draw,
+        x1,
+        y2 - length,
+        x1,
+        y2,
+        VIOLET_SOFT,
+    )
+
+    line(
+        draw,
+        x1,
+        y2,
+        x1 + length,
+        y2,
+        VIOLET_SOFT,
+    )
+
+    # bottom right
+    line(
+        draw,
+        x2 - length,
+        y2,
+        x2,
+        y2,
+        CYAN_SOFT,
+    )
+
+    line(
+        draw,
+        x2,
+        y2 - length,
+        x2,
+        y2,
+        CYAN_SOFT,
+    )
 
 
-def glow_panel(base, box):
-    """
-    Very subtle glow behind a HUD panel.
-    """
-
+def glow_panel(
+    base,
+    box,
+    blur=8,
+):
     glow = Image.new(
         "RGBA",
         base.size,
         (0, 0, 0, 0),
     )
 
-    gd = ImageDraw.Draw(glow)
+    gd = ImageDraw.Draw(
+        glow
+    )
 
     gd.rounded_rectangle(
         box,
-        radius=14,
+        radius=15,
         outline=CYAN,
-        width=2,
+        width=3,
     )
 
     glow = glow.filter(
-        ImageFilter.GaussianBlur(7)
+        ImageFilter.GaussianBlur(
+            blur
+        )
     )
 
-    base.alpha_composite(glow)
+    base.alpha_composite(
+        glow
+    )
 
 
-def fit_text(
+def fitted_font(
     draw,
-    text,
+    value,
     max_width,
     start_size,
-    min_size=8,
+    minimum_size=7,
     bold=False,
 ):
+    """
+    Reduce font size until the text fits the available width.
+    """
+
     size = start_size
 
-    while size > min_size:
+    while size > minimum_size:
 
         current_font = font(
             size,
             bold=bold,
         )
 
-        width = draw.textbbox(
+        bbox = draw.textbbox(
             (0, 0),
-            text,
+            str(value),
             font=current_font,
-        )[2]
+        )
+
+        width = bbox[2] - bbox[0]
 
         if width <= max_width:
             return current_font
@@ -241,66 +356,79 @@ def fit_text(
         size -= 1
 
     return font(
-        min_size,
+        minimum_size,
         bold=bold,
     )
 
 
-def wrap_text(draw, text, max_width, text_font):
-    """
-    Wrap text to fit inside a HUD panel.
-    """
-
-    words = str(text).split()
+def wrap_text(
+    draw,
+    value,
+    max_width,
+    text_font,
+    max_lines=3,
+):
+    words = str(value).split()
 
     lines = []
     current = ""
 
     for word in words:
 
-        test = f"{current} {word}".strip()
+        candidate = (
+            f"{current} {word}".strip()
+        )
 
-        width = draw.textbbox(
+        bbox = draw.textbbox(
             (0, 0),
-            test,
+            candidate,
             font=text_font,
-        )[2]
+        )
+
+        width = bbox[2] - bbox[0]
 
         if width <= max_width:
-            current = test
+
+            current = candidate
+
         else:
+
             if current:
-                lines.append(current)
+                lines.append(
+                    current
+                )
 
             current = word
 
-    if current:
+            if len(lines) >= max_lines:
+                break
+
+    if current and len(lines) < max_lines:
         lines.append(current)
 
-    return lines
+    return lines[:max_lines]
 
 
 # ============================================================
 # GITHUB API
 # ============================================================
 
-API_HEADERS = {
+GITHUB_HEADERS = {
     "User-Agent": "umesh-github-profile-hud",
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
 
 
-def github_get(path):
-    """
-    Request data from GitHub public REST API.
-    """
-
-    url = f"https://api.github.com{path}"
+def github_get(endpoint):
+    url = (
+        "https://api.github.com"
+        + endpoint
+    )
 
     request = urllib.request.Request(
         url,
-        headers=API_HEADERS,
+        headers=GITHUB_HEADERS,
         method="GET",
     )
 
@@ -310,45 +438,58 @@ def github_get(path):
     ) as response:
 
         return json.loads(
-            response.read().decode("utf-8")
+            response.read().decode(
+                "utf-8"
+            )
         )
 
 
 # ============================================================
-# GET LIVE GITHUB DATA
+# GITHUB DATA
 # ============================================================
 
 def get_github_data():
 
     fallback = {
         "repos": 0,
-        "followers": 0,
-        "following": 0,
 
-        "latest_name": "NO PROJECT FOUND",
-        "latest_description": (
-            "No public project information available."
-        ),
+        "recent_repos": [],
+
+        "latest_name": "N/A",
+        "latest_description": "N/A",
         "latest_language": "N/A",
 
-        "latest_sha": "N/A",
-        "latest_author": "N/A",
+        "latest_commit_sha": "N/A",
+        "latest_commit_author": "N/A",
+
         "latest_commit_date": "N/A",
         "latest_commit_time": "N/A",
+
+        "latest_visibility": "N/A",
+        "latest_status": "N/A",
     }
 
     try:
 
         # ----------------------------------------------------
-        # Profile data
+        # USER PROFILE
         # ----------------------------------------------------
 
         user = github_get(
             f"/users/{GITHUB_USERNAME}"
         )
 
+        total_repos = int(
+            user.get(
+                "public_repos",
+                0,
+            )
+        )
+
         # ----------------------------------------------------
-        # Public repositories
+        # PUBLIC REPOSITORIES
+        #
+        # Sorted by latest push.
         # ----------------------------------------------------
 
         repositories = github_get(
@@ -360,177 +501,251 @@ def get_github_data():
         )
 
         # ----------------------------------------------------
-        # IMPORTANT:
-        # Exclude the GitHub profile repository.
+        # REMOVE PROFILE REPOSITORY
         #
-        # Otherwise the workflow itself updates the profile
-        # repository and it would constantly appear as the
-        # "latest repository".
+        # The profile repo itself gets changed by the workflow.
+        # If we didn't remove it, it could constantly appear as
+        # the latest project.
         # ----------------------------------------------------
 
-        project_repositories = [
-            repo
-            for repo in repositories
-            if repo.get("name", "").lower()
-            != GITHUB_USERNAME.lower()
-            and not repo.get("fork", False)
-        ]
+        project_repositories = []
 
-        latest_repo = (
-            project_repositories[0]
-            if project_repositories
-            else None
-        )
+        for repo in repositories:
 
-        result = {
-            "repos": int(
-                user.get(
-                    "public_repos",
-                    0,
-                )
-            ),
+            repo_name = repo.get(
+                "name",
+                "",
+            )
 
-            "followers": int(
-                user.get(
-                    "followers",
-                    0,
-                )
-            ),
+            is_profile_repo = (
+                repo_name.lower()
+                == GITHUB_USERNAME.lower()
+            )
 
-            "following": int(
-                user.get(
-                    "following",
-                    0,
-                )
-            ),
+            is_fork = repo.get(
+                "fork",
+                False,
+            )
 
-            "latest_name": "NO PROJECT FOUND",
+            if is_profile_repo:
+                continue
 
-            "latest_description": (
-                "No public project information available."
-            ),
+            if is_fork:
+                continue
 
-            "latest_language": "N/A",
-
-            "latest_sha": "N/A",
-            "latest_author": "N/A",
-            "latest_commit_date": "N/A",
-            "latest_commit_time": "N/A",
-        }
+            project_repositories.append(
+                repo
+            )
 
         # ----------------------------------------------------
-        # Latest repository
+        # ONLY FIVE REPOSITORIES
         # ----------------------------------------------------
 
-        if latest_repo:
-
-            repo_name = latest_repo.get(
+        recent_repos = [
+            repo.get(
                 "name",
                 "UNKNOWN",
             )
+            for repo in project_repositories[:5]
+        ]
 
-            description = (
-                latest_repo.get(
-                    "description"
-                )
-                or "Public repository."
+        result = {
+            "repos": total_repos,
+
+            "recent_repos": recent_repos,
+
+            "latest_name": "N/A",
+            "latest_description": "N/A",
+            "latest_language": "N/A",
+
+            "latest_commit_sha": "N/A",
+            "latest_commit_author": "N/A",
+
+            "latest_commit_date": "N/A",
+            "latest_commit_time": "N/A",
+
+            "latest_visibility": "N/A",
+            "latest_status": "N/A",
+        }
+
+        # ----------------------------------------------------
+        # LATEST REPOSITORY
+        # ----------------------------------------------------
+
+        if not project_repositories:
+            return result
+
+        latest = project_repositories[0]
+
+        latest_name = latest.get(
+            "name",
+            "UNKNOWN",
+        )
+
+        latest_description = (
+            latest.get(
+                "description"
+            )
+            or "No description available."
+        )
+
+        latest_language = (
+            latest.get(
+                "language"
+            )
+            or "N/A"
+        )
+
+        result["latest_name"] = (
+            latest_name
+        )
+
+        result["latest_description"] = (
+            latest_description
+        )
+
+        result["latest_language"] = (
+            latest_language
+        )
+
+        # ----------------------------------------------------
+        # VISIBILITY
+        #
+        # Since we're looking through public user repos,
+        # this will normally be PUBLIC.
+        # ----------------------------------------------------
+
+        if latest.get(
+            "private",
+            False,
+        ):
+
+            result[
+                "latest_visibility"
+            ] = "PRIVATE"
+
+        else:
+
+            result[
+                "latest_visibility"
+            ] = "PUBLIC"
+
+        # ----------------------------------------------------
+        # STATUS
+        # ----------------------------------------------------
+
+        if latest.get(
+            "archived",
+            False,
+        ):
+
+            result[
+                "latest_status"
+            ] = "ARCHIVED"
+
+        else:
+
+            result[
+                "latest_status"
+            ] = "ACTIVE"
+
+        # ----------------------------------------------------
+        # LATEST COMMIT
+        # ----------------------------------------------------
+
+        try:
+
+            commits = github_get(
+                f"/repos/"
+                f"{GITHUB_USERNAME}/"
+                f"{latest_name}"
+                "/commits?per_page=1"
             )
 
-            language = (
-                latest_repo.get(
-                    "language"
+            if commits:
+
+                commit = commits[0]
+
+                result[
+                    "latest_commit_sha"
+                ] = (
+                    commit.get(
+                        "sha",
+                        "N/A",
+                    )[:8]
                 )
-                or "N/A"
+
+                commit_data = (
+                    commit.get(
+                        "commit",
+                        {},
+                    )
+                )
+
+                author_data = (
+                    commit_data.get(
+                        "author",
+                        {},
+                    )
+                )
+
+                result[
+                    "latest_commit_author"
+                ] = (
+                    author_data.get(
+                        "name",
+                        "UNKNOWN",
+                    )
+                )
+
+                timestamp = (
+                    author_data.get(
+                        "date"
+                    )
+                )
+
+                if timestamp:
+
+                    parsed = (
+                        datetime
+                        .fromisoformat(
+                            timestamp.replace(
+                                "Z",
+                                "+00:00",
+                            )
+                        )
+                    )
+
+                    ist = (
+                        parsed.astimezone(
+                            ZoneInfo(
+                                "Asia/Kolkata"
+                            )
+                        )
+                    )
+
+                    result[
+                        "latest_commit_date"
+                    ] = (
+                        ist.strftime(
+                            "%d %b %Y"
+                        ).upper()
+                    )
+
+                    result[
+                        "latest_commit_time"
+                    ] = (
+                        ist.strftime(
+                            "%H:%M"
+                        )
+                    )
+
+        except Exception as commit_error:
+
+            print(
+                "Commit lookup warning:",
+                commit_error,
             )
-
-            result["latest_name"] = repo_name
-            result["latest_description"] = description
-            result["latest_language"] = language
-
-            # ------------------------------------------------
-            # Latest commit
-            # ------------------------------------------------
-
-            try:
-
-                commits = github_get(
-                    f"/repos/"
-                    f"{GITHUB_USERNAME}/"
-                    f"{repo_name}"
-                    "/commits?per_page=1"
-                )
-
-                if commits:
-
-                    latest_commit = commits[0]
-
-                    result["latest_sha"] = (
-                        latest_commit
-                        .get("sha", "N/A")[:8]
-                    )
-
-                    commit_info = (
-                        latest_commit
-                        .get("commit", {})
-                    )
-
-                    author_info = (
-                        commit_info
-                        .get("author", {})
-                    )
-
-                    result["latest_author"] = (
-                        author_info
-                        .get(
-                            "name",
-                            "UNKNOWN",
-                        )
-                    )
-
-                    timestamp = (
-                        author_info
-                        .get("date")
-                    )
-
-                    if timestamp:
-
-                        parsed = (
-                            datetime
-                            .fromisoformat(
-                                timestamp
-                                .replace(
-                                    "Z",
-                                    "+00:00",
-                                )
-                            )
-                        )
-
-                        ist = (
-                            parsed.astimezone(
-                                ZoneInfo(
-                                    "Asia/Kolkata"
-                                )
-                            )
-                        )
-
-                        result["latest_commit_date"] = (
-                            ist.strftime(
-                                "%d %b %Y"
-                            ).upper()
-                        )
-
-                        result["latest_commit_time"] = (
-                            ist.strftime(
-                                "%H:%M"
-                            )
-                        )
-
-            except Exception as commit_error:
-
-                print(
-                    "Latest commit lookup warning:",
-                    commit_error,
-                )
 
         return result
 
@@ -545,13 +760,14 @@ def get_github_data():
 
 
 # ============================================================
-# LOAD BACKGROUND IMAGE
+# LOAD IMAGE
 # ============================================================
 
 if not INPUT_IMAGE.exists():
 
     raise FileNotFoundError(
-        f"Could not find hero.png at: {INPUT_IMAGE}"
+        f"Could not find hero.png at: "
+        f"{INPUT_IMAGE}"
     )
 
 
@@ -565,30 +781,20 @@ WIDTH, HEIGHT = base.size
 # SCALE
 # ============================================================
 
-# Your current image was designed around
-# approximately 1920 × 768.
-
 SX = WIDTH / 1920
 SY = HEIGHT / 768
 
 
-def S(value):
-    return int(value * SX)
+def S(x):
+    return int(x * SX)
 
 
-def T(value):
-    return int(value * SY)
-
-
-# ============================================================
-# FETCH DATA
-# ============================================================
-
-github = get_github_data()
+def T(y):
+    return int(y * SY)
 
 
 # ============================================================
-# CREATE HUD LAYERS
+# DRAWING LAYER
 # ============================================================
 
 overlay = Image.new(
@@ -597,17 +803,26 @@ overlay = Image.new(
     (0, 0, 0, 0),
 )
 
-glow_layer = Image.new(
-    "RGBA",
-    (WIDTH, HEIGHT),
-    (0, 0, 0, 0),
+draw = ImageDraw.Draw(
+    overlay
 )
 
-draw = ImageDraw.Draw(overlay)
+
+# ============================================================
+# GITHUB
+# ============================================================
+
+github = get_github_data()
 
 
 # ============================================================
 # 01 — SYSTEM STATUS
+# LEFT SIDE
+#
+# CHANGED:
+# Normal clock/date removed.
+# Followers/network/API fields removed.
+# Replaced with maximum 5 recent repositories.
 # ============================================================
 
 system_box = (
@@ -618,7 +833,7 @@ system_box = (
 )
 
 glow_panel(
-    glow_layer,
+    overlay,
     system_box,
 )
 
@@ -626,175 +841,199 @@ clipped_panel(
     draw,
     system_box,
     cut=S(14),
-    fill=GLASS,
+    fill=DARK_SOFT,
     outline=CYAN_SOFT,
 )
 
-corner_marks(
+draw_corner_marks(
     draw,
     system_box,
 )
 
-text_label(
+label(
     draw,
     S(38),
     T(72),
     "// SYSTEM STATUS",
-    10,
+    11,
 )
 
-text_title(
+title(
     draw,
     S(38),
-    T(98),
+    T(97),
     "OPERATIONAL",
-    23,
+    24,
 )
 
-# Online indicator
+# online indicator
 
 draw.ellipse(
     (
         S(286),
-        T(100),
+        T(99),
         S(296),
-        T(110),
+        T(109),
     ),
     fill=GREEN,
 )
 
-text_label(
+label(
     draw,
     S(38),
-    T(135),
-    "PROFILE ONLINE",
+    T(136),
+    "SYSTEM ONLINE",
     9,
     GREEN,
 )
 
-line(
-    draw,
-    S(38),
-    T(161),
-    S(300),
-    T(161),
-    CYAN_DIM,
-)
+# decorative signal waveform
+wave_x = S(38)
+wave_y = T(168)
 
-# Decorative signal waveform
-
-wave_points = []
+points = []
 
 wave_pattern = [
     0,
     -3,
     2,
+    -1,
     5,
-    1,
     -2,
-    4,
+    1,
     0,
     3,
-    -1,
 ]
 
-for i in range(120):
+for i in range(145):
 
-    x = S(38) + S(i)
+    px = (
+        wave_x
+        + S(i)
+    )
 
-    y = (
-        T(181)
+    py = (
+        wave_y
         + T(
             wave_pattern[
-                i % len(wave_pattern)
+                i % len(
+                    wave_pattern
+                )
             ]
         )
     )
 
-    wave_points.append(
-        (x, y)
+    points.append(
+        (px, py)
     )
 
-if len(wave_points) > 1:
+if len(points) > 1:
 
     draw.line(
-        wave_points,
+        points,
         fill=CYAN_SOFT,
         width=1,
     )
 
-text_label(
-    draw,
-    S(38),
-    T(205),
-    "// ACCOUNT SIGNAL",
-    9,
-)
-
-text_label(
-    draw,
-    S(38),
-    T(232),
-    f"REPOSITORIES   {github['repos']:02d}",
-    10,
-)
-
-text_label(
-    draw,
-    S(38),
-    T(255),
-    f"FOLLOWERS      {github['followers']:02d}",
-    10,
-)
-
-text_label(
-    draw,
-    S(38),
-    T(278),
-    f"FOLLOWING      {github['following']:02d}",
-    10,
-)
-
 line(
     draw,
     S(38),
-    T(302),
+    T(188),
     S(300),
-    T(302),
+    T(188),
     CYAN_DIM,
 )
 
-text_label(
+# ------------------------------------------------------------
+# RECENT REPOSITORIES
+# MAXIMUM FIVE
+# ------------------------------------------------------------
+
+label(
     draw,
     S(38),
-    T(320),
-    "// NETWORK",
+    T(207),
+    "// RECENT REPOSITORIES",
     9,
 )
 
-text_label(
-    draw,
-    S(38),
-    T(344),
-    "GITHUB          CONNECTED",
-    9,
-    GREEN,
-)
+recent_repos = github.get(
+    "recent_repos",
+    []
+)[:5]
 
-text_label(
-    draw,
-    S(38),
-    T(368),
-    "API SIGNAL      ACTIVE",
-    9,
-)
+repo_y = 232
+
+for index, repo_name in enumerate(
+    recent_repos
+):
+
+    # number
+    number_color = (
+        CYAN
+        if index % 2 == 0
+        else VIOLET
+    )
+
+    label(
+        draw,
+        S(38),
+        T(repo_y),
+        f"{index + 1:02d}",
+        8,
+        number_color,
+    )
+
+    # repository name
+    repo_font = fitted_font(
+        draw,
+        repo_name.upper(),
+        S(225),
+        9,
+        7,
+        bold=True,
+    )
+
+    draw.text(
+        (
+            S(70),
+            T(repo_y),
+        ),
+        repo_name.upper(),
+        font=repo_font,
+        fill=WHITE,
+    )
+
+    line(
+        draw,
+        S(70),
+        T(repo_y + 18),
+        S(298),
+        T(repo_y + 18),
+        (65, 190, 255, 35),
+    )
+
+    repo_y += 28
+
+
+if not recent_repos:
+
+    label(
+        draw,
+        S(38),
+        T(232),
+        "NO PUBLIC PROJECTS",
+        8,
+        WHITE_DIM,
+    )
 
 
 # ============================================================
-# 02 — SKILLS
+# 02 — MODULES / SKILLS
+# KEEP EXISTING STRUCTURE
 # ============================================================
 
-skills_box = (
+modules_box = (
     S(18),
     T(420),
     S(325),
@@ -803,188 +1042,238 @@ skills_box = (
 
 clipped_panel(
     draw,
-    skills_box,
+    modules_box,
     cut=S(14),
-    fill=GLASS,
-    outline=VIOLET_SOFT,
+    fill=DARK_SOFT,
+    outline=CYAN_SOFT,
 )
 
-corner_marks(
+draw_corner_marks(
     draw,
-    skills_box,
+    modules_box,
 )
 
-text_label(
+label(
     draw,
     S(38),
     T(442),
     "// SKILL MATRIX",
-    10,
+    11,
 )
 
-skill_y = 469
+skill_y = 470
 
-for index, skill in enumerate(
+for i, skill in enumerate(
     SKILLS[:7]
 ):
 
     accent = (
         CYAN_SOFT
-        if index % 2 == 0
+        if i % 2 == 0
         else VIOLET_SOFT
     )
 
     draw.ellipse(
         (
             S(40),
-            T(skill_y + 3),
-            S(47),
+            T(skill_y + 4),
+            S(46),
             T(skill_y + 10),
         ),
         outline=accent,
         width=1,
     )
 
+    skill_font = fitted_font(
+        draw,
+        skill,
+        S(220),
+        10,
+        7,
+    )
+
     draw.text(
         (
-            S(58),
+            S(56),
             T(skill_y),
         ),
         skill,
-        font=font(10),
+        font=skill_font,
         fill=WHITE,
     )
 
     line(
         draw,
-        S(58),
-        T(skill_y + 19),
-        S(298),
-        T(skill_y + 19),
-        (65, 190, 255, 28),
+        S(56),
+        T(skill_y + 21),
+        S(296),
+        T(skill_y + 21),
+        (65, 190, 255, 40),
     )
 
-    skill_y += 29
+    skill_y += 30
 
 
 # ============================================================
-# 03 — LATEST REPOSITORY
+# 03 — SESSION
+# UNCHANGED
 # ============================================================
 
-latest_box = (
+session_box = (
     S(845),
-    T(515),
-    S(1118),
+    T(535),
+    S(1115),
     T(705),
-)
-
-glow_panel(
-    glow_layer,
-    latest_box,
 )
 
 clipped_panel(
     draw,
-    latest_box,
+    session_box,
     cut=S(16),
-    fill=GLASS_DARK,
-    outline=VIOLET_SOFT,
+    fill=DARK,
+    outline=CYAN_SOFT,
 )
 
-corner_marks(
+draw_corner_marks(
     draw,
-    latest_box,
+    session_box,
 )
 
-text_label(
+label(
     draw,
     S(868),
-    T(537),
-    "// LATEST REPOSITORY",
+    T(556),
+    "// SESSION",
+    10,
+)
+
+label(
+    draw,
+    S(868),
+    T(582),
+    "USER",
     9,
 )
 
-latest_name = (
-    github["latest_name"]
-)
-
-latest_name_font = fit_text(
+session_user_font = fitted_font(
     draw,
-    latest_name.upper(),
-    S(220),
-    16,
-    8,
+    "UMESH_YENUMULA",
+    S(150),
+    10,
+    7,
     bold=True,
 )
 
 draw.text(
     (
-        S(868),
-        T(562),
+        S(940),
+        T(580),
     ),
-    latest_name.upper(),
-    font=latest_name_font,
+    "UMESH_YENUMULA",
+    font=session_user_font,
+    fill=WHITE,
+)
+
+label(
+    draw,
+    S(868),
+    T(608),
+    "IDENTITY",
+    9,
+)
+
+session_identity_font = fitted_font(
+    draw,
+    TITLE,
+    S(150),
+    9,
+    7,
+)
+
+draw.text(
+    (
+        S(940),
+        T(606),
+    ),
+    TITLE,
+    font=session_identity_font,
     fill=CYAN,
 )
 
-line(
+label(
     draw,
     S(868),
-    T(594),
-    S(1094),
-    T(594),
-    CYAN_DIM,
+    T(634),
+    "EDUCATION",
+    9,
 )
 
-description_font = font(
-    8
+draw.text(
+    (
+        S(940),
+        T(632),
+    ),
+    COLLEGE,
+    font=font(
+        10,
+        bold=True,
+    ),
+    fill=WHITE,
 )
 
-description_lines = wrap_text(
+label(
     draw,
-    github["latest_description"],
-    S(215),
-    description_font,
+    S(868),
+    T(659),
+    "SESSION",
+    9,
 )
 
-for i, desc_line in enumerate(
-    description_lines[:3]
-):
+draw.text(
+    (
+        S(940),
+        T(657),
+    ),
+    "ACTIVE / PUBLIC",
+    font=font(
+        9,
+        bold=True,
+    ),
+    fill=GREEN,
+)
 
-    draw.text(
-        (
-            S(868),
-            T(
-                607 + i * 15
-            ),
-        ),
-        desc_line.upper(),
-        font=description_font,
-        fill=WHITE_DIM,
+# decorative activity bars remain unchanged
+
+for i in range(9):
+
+    height = (
+        4
+        + ((i * 7) % 15)
     )
 
-meta_y = 662
-
-text_label(
-    draw,
-    S(868),
-    T(meta_y),
-    f"LANGUAGE   {github['latest_language']}",
-    8,
-)
-
-text_label(
-    draw,
-    S(868),
-    T(meta_y + 18),
-    "SOURCE     GITHUB",
-    8,
-    GREEN,
-)
+    draw.rectangle(
+        (
+            S(
+                865
+                + i * 19
+            ),
+            T(
+                688
+                - height
+            ),
+            S(
+                874
+                + i * 19
+            ),
+            T(688),
+        ),
+        fill=CYAN_SOFT,
+    )
 
 
 # ============================================================
-# 04 — OPERATOR PROFILE
+# 04 — PROFILE / IDENTITY
+# KEEP EXISTING STRUCTURE
 # ============================================================
 
 profile_box = (
@@ -998,79 +1287,88 @@ clipped_panel(
     draw,
     profile_box,
     cut=S(18),
-    fill=GLASS,
+    fill=DARK_SOFT,
     outline=CYAN_SOFT,
 )
 
-corner_marks(
+draw_corner_marks(
     draw,
     profile_box,
 )
 
-text_label(
+label(
     draw,
     S(1220),
-    T(51),
+    T(52),
     "// OPERATOR PROFILE",
-    10,
+    11,
 )
 
-text_title(
+title(
     draw,
     S(1220),
-    T(78),
+    T(79),
     NAME,
-    23,
-)
-
-title_font = fit_text(
-    draw,
-    TITLE,
-    S(390),
-    14,
-    9,
-    bold=True,
+    25,
 )
 
 draw.text(
     (
         S(1220),
-        T(114),
+        T(116),
     ),
     TITLE,
-    font=title_font,
-    fill=VIOLET,
+    font=font(
+        15,
+        bold=True,
+    ),
+    fill=CYAN,
 )
 
 line(
     draw,
     S(1220),
-    T(145),
+    T(148),
     S(1625),
-    T(145),
+    T(148),
     CYAN_DIM,
 )
 
-text_label(
-    draw,
-    S(1220),
-    T(159),
-    PROGRAM,
-    8,
+profile_education = (
+    f"{EDUCATION}"
+    f"  //  "
+    f"{COLLEGE}"
 )
 
-text_label(
+education_font = fitted_font(
     draw,
-    S(1220),
-    T(178),
-    f"// {COLLEGE}",
-    9,
-    WHITE,
+    profile_education,
+    S(405),
+    10,
+    7,
+)
+
+draw.text(
+    (
+        S(1220),
+        T(163),
+    ),
+    profile_education,
+    font=education_font,
+    fill=WHITE_DIM,
 )
 
 
 # ============================================================
-# 05 — REAL-TIME GITHUB FEED
+# 05 — PUBLIC SIGNAL
+# RIGHT / LOWER
+#
+# ONLY:
+# - Latest repo name
+# - Last commit date/time
+# - Visibility
+# - Status
+# - Total repos
 # ============================================================
 
 feed_box = (
@@ -1081,7 +1379,7 @@ feed_box = (
 )
 
 glow_panel(
-    glow_layer,
+    overlay,
     feed_box,
 )
 
@@ -1089,174 +1387,125 @@ clipped_panel(
     draw,
     feed_box,
     cut=S(16),
-    fill=GLASS,
+    fill=DARK_SOFT,
     outline=CYAN_SOFT,
 )
 
-corner_marks(
+draw_corner_marks(
     draw,
     feed_box,
 )
 
-text_label(
+label(
     draw,
     S(1240),
     T(457),
-    "// REAL-TIME GITHUB FEED",
-    9,
+    "// PUBLIC SIGNAL",
+    11,
 )
 
-text_label(
-    draw,
-    S(1240),
-    T(486),
-    "LATEST COMMIT",
-    8,
-)
-
-commit_sha = (
-    github["latest_sha"]
-)
-
-draw.text(
+signal_rows = [
     (
-        S(1240),
-        T(508),
+        "LATEST REPO",
+        github.get(
+            "latest_name",
+            "N/A",
+        ),
+        CYAN,
     ),
-    f"#{commit_sha}",
-    font=font(
-        12,
-        bold=True,
-    ),
-    fill=CYAN,
-)
 
-feed_repo_font = fit_text(
-    draw,
-    github["latest_name"].upper(),
-    S(330),
-    8,
-    7,
-)
-
-draw.text(
     (
-        S(1240),
-        T(540),
+        "LAST COMMIT",
+        (
+            f"{github.get('latest_commit_date', 'N/A')}"
+            f" // "
+            f"{github.get('latest_commit_time', 'N/A')}"
+            f" IST"
+        ),
+        WHITE,
     ),
-    github["latest_name"].upper(),
-    font=feed_repo_font,
-    fill=WHITE,
-)
 
-line(
-    draw,
-    S(1240),
-    T(561),
-    S(1605),
-    T(561),
-    CYAN_DIM,
-)
+    (
+        "VISIBILITY",
+        github.get(
+            "latest_visibility",
+            "N/A",
+        ),
+        GREEN,
+    ),
 
-text_label(
-    draw,
-    S(1240),
-    T(575),
-    f"AUTHOR      {github['latest_author']}",
-    8,
-)
+    (
+        "STATUS",
+        github.get(
+            "latest_status",
+            "N/A",
+        ),
+        GREEN,
+    ),
 
-text_label(
-    draw,
-    S(1240),
-    T(600),
-    f"DATE        {github['latest_commit_date']}",
-    8,
-)
-
-text_label(
-    draw,
-    S(1240),
-    T(623),
-    f"TIME        {github['latest_commit_time']} IST",
-    8,
-    GREEN,
-)
-
-line(
-    draw,
-    S(1240),
-    T(645),
-    S(1605),
-    T(645),
-    CYAN_DIM,
-)
-
-text_label(
-    draw,
-    S(1240),
-    T(659),
-    "ACCOUNT      CONNECTED",
-    8,
-    GREEN,
-)
-
-text_label(
-    draw,
-    S(1435),
-    T(659),
-    f"REPOS {github['repos']:02d}",
-    8,
-)
-
-# Small decorative graph
-
-graph_points = []
-
-graph_pattern = [
-    0,
-    3,
-    -2,
-    4,
-    1,
-    -1,
-    5,
-    -3,
-    2,
-    1,
+    (
+        "TOTAL REPOS",
+        str(
+            github.get(
+                "repos",
+                0,
+            )
+        ).zfill(2),
+        WHITE,
+    ),
 ]
 
-for i in range(65):
+signal_y = 490
 
-    x = (
-        S(1435)
-        + int(i * S(2.1))
+for key, value, value_color in signal_rows:
+
+    label(
+        draw,
+        S(1240),
+        T(signal_y),
+        key,
+        8,
     )
 
-    y = (
-        T(681)
-        + T(
-            graph_pattern[
-                i % len(graph_pattern)
-            ]
-        )
+    value_font = fitted_font(
+        draw,
+        str(value).upper(),
+        S(235),
+        9,
+        7,
+        bold=(
+            key in {
+                "LATEST REPO",
+                "STATUS",
+            }
+        ),
     )
 
-    graph_points.append(
-        (x, y)
+    draw.text(
+        (
+            S(1350),
+            T(signal_y - 1),
+        ),
+        str(value).upper(),
+        font=value_font,
+        fill=value_color,
     )
 
-if len(graph_points) > 1:
-
-    draw.line(
-        graph_points,
-        fill=VIOLET_SOFT,
-        width=1,
+    line(
+        draw,
+        S(1240),
+        T(signal_y + 21),
+        S(1605),
+        T(signal_y + 21),
+        (65, 190, 255, 35),
     )
+
+    signal_y += 35
 
 
 # ============================================================
 # 06 — MOTIVATION
+# KEEP EXISTING STRUCTURE
 # ============================================================
 
 motivation_box = (
@@ -1270,31 +1519,31 @@ clipped_panel(
     draw,
     motivation_box,
     cut=S(16),
-    fill=GLASS,
-    outline=VIOLET_SOFT,
+    fill=DARK_SOFT,
+    outline=CYAN_SOFT,
 )
 
-corner_marks(
+draw_corner_marks(
     draw,
     motivation_box,
 )
 
-text_label(
+label(
     draw,
     S(1690),
     T(72),
     "// MOTIVATION",
-    9,
+    10,
 )
 
 draw.text(
     (
         S(1690),
-        T(112),
+        T(115),
     ),
     "DISCIPLINE",
     font=font(
-        17,
+        19,
         bold=True,
     ),
     fill=WHITE,
@@ -1302,34 +1551,34 @@ draw.text(
 
 draw.text(
     (
-        S(1738),
-        T(142),
+        S(1737),
+        T(145),
     ),
     "TODAY",
     font=font(
-        17,
+        19,
         bold=True,
     ),
-    fill=CYAN,
+    fill=WHITE,
 )
 
 line(
     draw,
     S(1700),
-    T(182),
+    T(185),
     S(1865),
-    T(182),
+    T(185),
     CYAN_DIM,
 )
 
 draw.text(
     (
         S(1700),
-        T(207),
+        T(208),
     ),
     "FREEDOM",
     font=font(
-        17,
+        19,
         bold=True,
     ),
     fill=WHITE,
@@ -1337,15 +1586,15 @@ draw.text(
 
 draw.text(
     (
-        S(1726),
-        T(237),
+        S(1730),
+        T(238),
     ),
     "TOMORROW",
     font=font(
-        17,
+        19,
         bold=True,
     ),
-    fill=VIOLET,
+    fill=WHITE,
 )
 
 draw.ellipse(
@@ -1374,53 +1623,63 @@ line(
     T(285),
     S(1860),
     T(285),
-    VIOLET_SOFT,
+    CYAN_DIM,
 )
 
 
 # ============================================================
 # 07 — MICRO HUD DETAILS
+# KEEP EXISTING STRUCTURE
 # ============================================================
 
-text_label(
+line(
     draw,
     S(858),
-    T(480),
-    "FOCUS > EXECUTE > SUCCEED",
-    7,
+    T(503),
+    S(1050),
+    T(503),
+    CYAN_DIM,
 )
 
-text_label(
+label(
     draw,
-    S(1752),
-    T(330),
-    "SYS // PROFILE // ACTIVE",
-    7,
+    S(870),
+    T(481),
+    "FOCUS  >  EXECUTE  >  SUCCEED",
+    9,
 )
 
-text_label(
+label(
+    draw,
+    S(1750),
+    T(332),
+    "SYS // PROFILE // ACTIVE",
+    8,
+)
+
+label(
     draw,
     S(35),
     T(698),
     "NODE 01",
-    7,
+    8,
 )
 
-text_label(
+label(
     draw,
     S(95),
     T(698),
     "SECURE",
-    7,
+    8,
     GREEN,
 )
 
-text_label(
+label(
     draw,
     S(1810),
     T(25),
     "LIVE",
-    7,
+    8,
     GREEN,
 )
 
@@ -1429,21 +1688,19 @@ text_label(
 # COMPOSITE
 # ============================================================
 
-# Put glow underneath the HUD itself.
-overlay = Image.alpha_composite(
-    glow_layer,
-    overlay,
-)
-
 result = Image.alpha_composite(
     base,
     overlay,
-).convert("RGB")
+)
+
+result = result.convert(
+    "RGB"
+)
 
 result.save(
     OUTPUT_IMAGE,
     format="PNG",
-    optimize=True,
+    quality=95,
 )
 
 
@@ -1454,16 +1711,55 @@ result.save(
 print("==============================================")
 print("HUD GENERATED SUCCESSFULLY")
 print("----------------------------------------------")
-print(f"GitHub repositories : {github['repos']}")
-print(f"GitHub followers    : {github['followers']}")
-print(f"GitHub following    : {github['following']}")
-print(f"Latest repository   : {github['latest_name']}")
-print(f"Latest language     : {github['latest_language']}")
-print(f"Latest commit SHA   : {github['latest_sha']}")
-print(f"Latest commit author: {github['latest_author']}")
-print(f"Latest commit date  : {github['latest_commit_date']}")
-print(f"Latest commit time  : {github['latest_commit_time']} IST")
+print(
+    f"Total public repos : "
+    f"{github['repos']}"
+)
+print(
+    f"Latest repository  : "
+    f"{github['latest_name']}"
+)
+print(
+    f"Latest commit SHA  : "
+    f"{github['latest_commit_sha']}"
+)
+print(
+    f"Commit author      : "
+    f"{github['latest_commit_author']}"
+)
+print(
+    f"Commit date        : "
+    f"{github['latest_commit_date']}"
+)
+print(
+    f"Commit time IST    : "
+    f"{github['latest_commit_time']}"
+)
+print(
+    f"Visibility         : "
+    f"{github['latest_visibility']}"
+)
+print(
+    f"Status             : "
+    f"{github['latest_status']}"
+)
 print("----------------------------------------------")
-print("Normal live clock   : REMOVED")
+print("Recent repositories:")
+
+for index, repo in enumerate(
+    github.get(
+        "recent_repos",
+        [],
+    ),
+    1,
+):
+    print(
+        f"  {index}. {repo}"
+    )
+
+print("----------------------------------------------")
+print("Normal clock/date   : REMOVED")
+print("Followers/following : REMOVED")
+print("Network/API signal  : REMOVED")
 print(f"Output              : {OUTPUT_IMAGE}")
 print("==============================================")

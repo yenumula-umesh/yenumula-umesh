@@ -1,285 +1,1469 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import urllib.request
+import urllib.error
 import json
 
 # ============================================================
 # UMESH YENUMULA — CINEMATIC GITHUB HUD
-# Time/date intentionally NOT rendered into the image.
-# GitHub numbers are refreshed whenever this workflow runs.
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 INPUT_IMAGE = BASE_DIR / "hero.png"
 OUTPUT_IMAGE = BASE_DIR / "hero-live.png"
 
+# ============================================================
+# PROFILE
+# ============================================================
+
 NAME = "UMESH YENUMULA"
 TITLE = "DATA ANALYST  ×  AI ENGINEER"
-EDUCATION = "BS IN DATA SCIENCE & APPLICATIONS"
+
 COLLEGE = "IIT MADRAS"
+PROGRAM = "BS IN DATA SCIENCE & APPLICATIONS"
+
 GITHUB_USERNAME = "yenumula-umesh"
 
 SKILLS = [
-    "PYTHON", "FLASK", "TELETHON", "REST APIs", "NUMPY",
-    "GIT / GITHUB", "HTML / CSS", "C / C++", "SQL / DBMS"
+    "PYTHON",
+    "FLASK",
+    "TELETHON",
+    "REST APIs",
+    "NUMPY",
+    "GIT / GITHUB",
+    "HTML / CSS",
+    "C / C++",
+    "SQL / DBMS",
 ]
 
-# Visual palette — restrained so it blends with the original image.
-CYAN = (65, 205, 255, 235)
-CYAN_SOFT = (65, 205, 255, 125)
-CYAN_DIM = (65, 205, 255, 55)
-VIOLET_SOFT = (145, 100, 255, 115)
-WHITE = (225, 241, 248, 235)
-WHITE_DIM = (170, 202, 218, 175)
-GREEN = (70, 255, 170, 235)
-DARK = (3, 11, 20, 150)
-DARK_DEEP = (3, 10, 18, 180)
+# ============================================================
+# HUD COLORS
+# ============================================================
+
+CYAN = (70, 195, 255, 235)
+CYAN_SOFT = (70, 195, 255, 125)
+CYAN_DIM = (70, 195, 255, 50)
+
+VIOLET = (165, 110, 255, 225)
+VIOLET_SOFT = (165, 110, 255, 105)
+
+GREEN = (70, 255, 175, 235)
+
+WHITE = (230, 243, 250, 238)
+WHITE_DIM = (175, 205, 220, 185)
+
+GLASS = (2, 10, 18, 88)
+GLASS_DARK = (2, 10, 18, 115)
+
+# ============================================================
+# FONT PATHS
+# ============================================================
 
 FONT_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
 ]
-BOLD_PATHS = [
+
+FONT_BOLD_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
 ]
 
 
 def find_font(paths):
-    for p in paths:
-        if Path(p).exists():
-            return p
+    for path in paths:
+        if Path(path).exists():
+            return path
     return None
 
 
-REGULAR = find_font(FONT_PATHS)
-BOLD = find_font(BOLD_PATHS)
+FONT_REGULAR = find_font(FONT_PATHS)
+FONT_BOLD = find_font(FONT_BOLD_PATHS)
 
 
-def f(size, bold=False):
-    path = BOLD if bold else REGULAR
-    return ImageFont.truetype(path, size) if path else ImageFont.load_default()
+def font(size, bold=False):
+    path = FONT_BOLD if bold else FONT_REGULAR
+
+    if path:
+        return ImageFont.truetype(path, size=size)
+
+    return ImageFont.load_default()
 
 
-def scaled(box, sx, sy):
-    return tuple(int(v * (sx if i % 2 == 0 else sy)) for i, v in enumerate(box))
+# ============================================================
+# DRAWING HELPERS
+# ============================================================
+
+def line(draw, x1, y1, x2, y2, fill=CYAN_DIM, width=1):
+    draw.line(
+        (x1, y1, x2, y2),
+        fill=fill,
+        width=width,
+    )
 
 
-def draw_line(d, x1, y1, x2, y2, fill=CYAN_DIM, width=1):
-    d.line((x1, y1, x2, y2), fill=fill, width=width)
+def text_label(draw, x, y, text, size=9, fill=WHITE_DIM):
+    draw.text(
+        (x, y),
+        str(text).upper(),
+        font=font(size),
+        fill=fill,
+    )
 
 
-def hud_panel(d, box, cut=14, fill=DARK, outline=CYAN_SOFT):
+def text_title(draw, x, y, text, size=22, fill=CYAN):
+    draw.text(
+        (x, y),
+        str(text),
+        font=font(size, bold=True),
+        fill=fill,
+    )
+
+
+def clipped_panel(
+    draw,
+    box,
+    cut=14,
+    fill=GLASS,
+    outline=CYAN_SOFT,
+    width=1,
+):
+    """
+    Futuristic transparent panel with cut corners.
+    """
+
     x1, y1, x2, y2 = box
-    pts = [
-        (x1 + cut, y1), (x2 - cut, y1), (x2, y1 + cut),
-        (x2, y2 - cut), (x2 - cut, y2), (x1 + cut, y2),
-        (x1, y2 - cut), (x1, y1 + cut)
+
+    points = [
+        (x1 + cut, y1),
+        (x2 - cut, y1),
+        (x2, y1 + cut),
+        (x2, y2 - cut),
+        (x2 - cut, y2),
+        (x1 + cut, y2),
+        (x1, y2 - cut),
+        (x1, y1 + cut),
     ]
-    d.polygon(pts, fill=fill)
-    d.line(pts + [pts[0]], fill=outline, width=1, joint="curve")
+
+    draw.polygon(
+        points,
+        fill=fill,
+    )
+
+    draw.line(
+        points + [points[0]],
+        fill=outline,
+        width=width,
+        joint="curve",
+    )
 
 
-def corner_marks(d, box, length=16):
+def corner_marks(draw, box, length=15):
+    """
+    Small technical corner brackets.
+    """
+
     x1, y1, x2, y2 = box
-    c = CYAN_SOFT
-    draw_line(d, x1, y1 + length, x1, y1, c)
-    draw_line(d, x1, y1, x1 + length, y1, c)
-    draw_line(d, x2 - length, y1, x2, y1, c)
-    draw_line(d, x2, y1, x2, y1 + length, c)
-    draw_line(d, x1, y2 - length, x1, y2, c)
-    draw_line(d, x1, y2, x1 + length, y2, c)
-    draw_line(d, x2 - length, y2, x2, y2, c)
-    draw_line(d, x2, y2 - length, x2, y2, c)
+
+    # top-left
+    line(draw, x1, y1 + length, x1, y1, CYAN_SOFT)
+    line(draw, x1, y1, x1 + length, y1, CYAN_SOFT)
+
+    # top-right
+    line(draw, x2 - length, y1, x2, y1, VIOLET_SOFT)
+    line(draw, x2, y1, x2, y1 + length, VIOLET_SOFT)
+
+    # bottom-left
+    line(draw, x1, y2 - length, x1, y2, VIOLET_SOFT)
+    line(draw, x1, y2, x1 + length, y2, VIOLET_SOFT)
+
+    # bottom-right
+    line(draw, x2 - length, y2, x2, y2, CYAN_SOFT)
+    line(draw, x2, y2 - length, x2, y2, CYAN_SOFT)
 
 
-def glow(base, box):
-    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    ld = ImageDraw.Draw(layer)
-    ld.rounded_rectangle(box, radius=14, outline=CYAN, width=3)
-    base.alpha_composite(layer.filter(ImageFilter.GaussianBlur(8)))
+def glow_panel(base, box):
+    """
+    Very subtle glow behind a HUD panel.
+    """
+
+    glow = Image.new(
+        "RGBA",
+        base.size,
+        (0, 0, 0, 0),
+    )
+
+    gd = ImageDraw.Draw(glow)
+
+    gd.rounded_rectangle(
+        box,
+        radius=14,
+        outline=CYAN,
+        width=2,
+    )
+
+    glow = glow.filter(
+        ImageFilter.GaussianBlur(7)
+    )
+
+    base.alpha_composite(glow)
 
 
-def label(d, x, y, text, size=10, fill=WHITE_DIM):
-    d.text((x, y), text.upper(), font=f(size), fill=fill)
+def fit_text(
+    draw,
+    text,
+    max_width,
+    start_size,
+    min_size=8,
+    bold=False,
+):
+    size = start_size
+
+    while size > min_size:
+
+        current_font = font(
+            size,
+            bold=bold,
+        )
+
+        width = draw.textbbox(
+            (0, 0),
+            text,
+            font=current_font,
+        )[2]
+
+        if width <= max_width:
+            return current_font
+
+        size -= 1
+
+    return font(
+        min_size,
+        bold=bold,
+    )
 
 
-def text(d, x, y, value, size=12, fill=WHITE, bold=False):
-    d.text((x, y), value, font=f(size, bold), fill=fill)
+def wrap_text(draw, text, max_width, text_font):
+    """
+    Wrap text to fit inside a HUD panel.
+    """
+
+    words = str(text).split()
+
+    lines = []
+    current = ""
+
+    for word in words:
+
+        test = f"{current} {word}".strip()
+
+        width = draw.textbbox(
+            (0, 0),
+            test,
+            font=text_font,
+        )[2]
+
+        if width <= max_width:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+
+            current = word
+
+    if current:
+        lines.append(current)
+
+    return lines
 
 
-def github_data():
-    fallback = {"repos": 0, "followers": 0}
-    url = f"https://api.github.com/users/{GITHUB_USERNAME}"
+# ============================================================
+# GITHUB API
+# ============================================================
+
+API_HEADERS = {
+    "User-Agent": "umesh-github-profile-hud",
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+}
+
+
+def github_get(path):
+    """
+    Request data from GitHub public REST API.
+    """
+
+    url = f"https://api.github.com{path}"
+
+    request = urllib.request.Request(
+        url,
+        headers=API_HEADERS,
+        method="GET",
+    )
+
+    with urllib.request.urlopen(
+        request,
+        timeout=15,
+    ) as response:
+
+        return json.loads(
+            response.read().decode("utf-8")
+        )
+
+
+# ============================================================
+# GET LIVE GITHUB DATA
+# ============================================================
+
+def get_github_data():
+
+    fallback = {
+        "repos": 0,
+        "followers": 0,
+        "following": 0,
+
+        "latest_name": "NO PROJECT FOUND",
+        "latest_description": (
+            "No public project information available."
+        ),
+        "latest_language": "N/A",
+
+        "latest_sha": "N/A",
+        "latest_author": "N/A",
+        "latest_commit_date": "N/A",
+        "latest_commit_time": "N/A",
+    }
+
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "umesh-profile-hud"})
-        with urllib.request.urlopen(req, timeout=8) as r:
-            data = json.loads(r.read().decode("utf-8"))
-        return {
-            "repos": int(data.get("public_repos", 0)),
-            "followers": int(data.get("followers", 0)),
+
+        # ----------------------------------------------------
+        # Profile data
+        # ----------------------------------------------------
+
+        user = github_get(
+            f"/users/{GITHUB_USERNAME}"
+        )
+
+        # ----------------------------------------------------
+        # Public repositories
+        # ----------------------------------------------------
+
+        repositories = github_get(
+            f"/users/{GITHUB_USERNAME}/repos"
+            "?type=owner"
+            "&sort=pushed"
+            "&direction=desc"
+            "&per_page=30"
+        )
+
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Exclude the GitHub profile repository.
+        #
+        # Otherwise the workflow itself updates the profile
+        # repository and it would constantly appear as the
+        # "latest repository".
+        # ----------------------------------------------------
+
+        project_repositories = [
+            repo
+            for repo in repositories
+            if repo.get("name", "").lower()
+            != GITHUB_USERNAME.lower()
+            and not repo.get("fork", False)
+        ]
+
+        latest_repo = (
+            project_repositories[0]
+            if project_repositories
+            else None
+        )
+
+        result = {
+            "repos": int(
+                user.get(
+                    "public_repos",
+                    0,
+                )
+            ),
+
+            "followers": int(
+                user.get(
+                    "followers",
+                    0,
+                )
+            ),
+
+            "following": int(
+                user.get(
+                    "following",
+                    0,
+                )
+            ),
+
+            "latest_name": "NO PROJECT FOUND",
+
+            "latest_description": (
+                "No public project information available."
+            ),
+
+            "latest_language": "N/A",
+
+            "latest_sha": "N/A",
+            "latest_author": "N/A",
+            "latest_commit_date": "N/A",
+            "latest_commit_time": "N/A",
         }
-    except Exception:
+
+        # ----------------------------------------------------
+        # Latest repository
+        # ----------------------------------------------------
+
+        if latest_repo:
+
+            repo_name = latest_repo.get(
+                "name",
+                "UNKNOWN",
+            )
+
+            description = (
+                latest_repo.get(
+                    "description"
+                )
+                or "Public repository."
+            )
+
+            language = (
+                latest_repo.get(
+                    "language"
+                )
+                or "N/A"
+            )
+
+            result["latest_name"] = repo_name
+            result["latest_description"] = description
+            result["latest_language"] = language
+
+            # ------------------------------------------------
+            # Latest commit
+            # ------------------------------------------------
+
+            try:
+
+                commits = github_get(
+                    f"/repos/"
+                    f"{GITHUB_USERNAME}/"
+                    f"{repo_name}"
+                    "/commits?per_page=1"
+                )
+
+                if commits:
+
+                    latest_commit = commits[0]
+
+                    result["latest_sha"] = (
+                        latest_commit
+                        .get("sha", "N/A")[:8]
+                    )
+
+                    commit_info = (
+                        latest_commit
+                        .get("commit", {})
+                    )
+
+                    author_info = (
+                        commit_info
+                        .get("author", {})
+                    )
+
+                    result["latest_author"] = (
+                        author_info
+                        .get(
+                            "name",
+                            "UNKNOWN",
+                        )
+                    )
+
+                    timestamp = (
+                        author_info
+                        .get("date")
+                    )
+
+                    if timestamp:
+
+                        parsed = (
+                            datetime
+                            .fromisoformat(
+                                timestamp
+                                .replace(
+                                    "Z",
+                                    "+00:00",
+                                )
+                            )
+                        )
+
+                        ist = (
+                            parsed.astimezone(
+                                ZoneInfo(
+                                    "Asia/Kolkata"
+                                )
+                            )
+                        )
+
+                        result["latest_commit_date"] = (
+                            ist.strftime(
+                                "%d %b %Y"
+                            ).upper()
+                        )
+
+                        result["latest_commit_time"] = (
+                            ist.strftime(
+                                "%H:%M"
+                            )
+                        )
+
+            except Exception as commit_error:
+
+                print(
+                    "Latest commit lookup warning:",
+                    commit_error,
+                )
+
+        return result
+
+    except Exception as error:
+
+        print(
+            "GitHub API warning:",
+            error,
+        )
+
         return fallback
 
 
+# ============================================================
+# LOAD BACKGROUND IMAGE
+# ============================================================
+
 if not INPUT_IMAGE.exists():
-    raise FileNotFoundError(f"Could not find hero.png at {INPUT_IMAGE}")
 
-base = Image.open(INPUT_IMAGE).convert("RGBA")
-W, H = base.size
-sx, sy = W / 1920, H / 768
-S = lambda x: int(x * sx)
-T = lambda y: int(y * sy)
+    raise FileNotFoundError(
+        f"Could not find hero.png at: {INPUT_IMAGE}"
+    )
 
-layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-d = ImageDraw.Draw(layer)
-gh = github_data()
 
-# ------------------------------------------------------------
-# LEFT — SYSTEM STATUS (NO CLOCK)
-# ------------------------------------------------------------
-system = scaled((18, 48, 325, 355), sx, sy)
-glow(layer, system)
-hud_panel(d, system, S(14))
-corner_marks(d, system)
-label(d, S(38), T(70), "// SYSTEM STATUS", 11)
-text(d, S(38), T(96), "OPERATIONAL", 25, GREEN, True)
-d.ellipse((S(286), T(99), S(296), T(109)), fill=GREEN)
-label(d, S(38), T(133), "SYSTEM ONLINE", 9, GREEN)
+base = Image.open(
+    INPUT_IMAGE
+).convert("RGBA")
 
-# visual signal strip
-points = []
-for i in range(150):
-    x = S(38) + S(i)
-    pattern = [0, -3, 2, -1, 5, -2, 1, 0, 3, -1]
-    y = T(166) + T(pattern[i % len(pattern)])
-    points.append((x, y))
-d.line(points, fill=CYAN_SOFT, width=1)
+WIDTH, HEIGHT = base.size
 
-draw_line(d, S(38), T(188), S(300), T(188))
-label(d, S(38), T(206), "// PROFILE SIGNAL", 9)
-label(d, S(38), T(237), f"REPOSITORIES    {gh['repos']:02d}", 10, WHITE)
-label(d, S(38), T(264), f"FOLLOWERS       {gh['followers']:02d}", 10, WHITE)
-label(d, S(38), T(291), "GITHUB          CONNECTED", 10, GREEN)
-label(d, S(38), T(318), "NETWORK         ONLINE", 10, GREEN)
+# ============================================================
+# SCALE
+# ============================================================
 
-# ------------------------------------------------------------
-# LEFT LOWER — SKILL MATRIX
-# ------------------------------------------------------------
-skills_box = scaled((18, 372, 325, 625), sx, sy)
-hud_panel(d, skills_box, S(14))
-corner_marks(d, skills_box)
-label(d, S(38), T(394), "// SKILL MATRIX", 11)
+# Your current image was designed around
+# approximately 1920 × 768.
 
-# Two-column matrix: cleaner and more compact.
-for i, skill in enumerate(SKILLS):
-    col = i % 2
-    row = i // 2
-    x = S(40 + col * 126)
-    y = T(428 + row * 39)
-    d.ellipse((x, y + T(4), x + S(7), y + T(11)), outline=CYAN_SOFT, width=1)
-    text(d, x + S(14), y, skill, 9, WHITE)
-    draw_line(d, x + S(14), y + T(22), x + S(113), y + T(22), CYAN_DIM)
+SX = WIDTH / 1920
+SY = HEIGHT / 768
 
-# small active-module footer
-label(d, S(40), T(588), "MODULES", 8)
-text(d, S(102), T(586), "09 ACTIVE", 9, CYAN, True)
 
-# ------------------------------------------------------------
-# UPPER CENTER-RIGHT — OPERATOR PROFILE
-# ------------------------------------------------------------
-profile = scaled((900, 28, 1645, 185), sx, sy)
-hud_panel(d, profile, S(18))
-corner_marks(d, profile)
-label(d, S(925), T(51), "// OPERATOR PROFILE", 10)
-text(d, S(925), T(78), NAME, 24, WHITE, True)
-text(d, S(925), T(115), TITLE, 14, CYAN, True)
-draw_line(d, S(925), T(142), S(1608), T(142), CYAN_DIM)
-label(d, S(925), T(156), f"{EDUCATION}  //  {COLLEGE}", 9)
+def S(value):
+    return int(value * SX)
 
-# decorative signal marks inside the profile box
-for i in range(5):
-    x = S(1540 + i * 13)
-    d.rectangle((x, T(57), x + S(6), T(62 + (i % 3) * 7)), fill=(145, 100, 255, 110))
 
-# ------------------------------------------------------------
-# CENTER LOWER — SESSION (NO CLOCK)
-# ------------------------------------------------------------
-session = scaled((845, 535, 1120, 705), sx, sy)
-hud_panel(d, session, S(16), fill=DARK_DEEP)
-corner_marks(d, session)
-label(d, S(868), T(556), "// SESSION", 10)
-label(d, S(868), T(582), "USER", 9)
-text(d, S(940), T(579), "UMESH_YENUMULA", 9, WHITE, True)
-label(d, S(868), T(611), "IDENTITY", 9)
-text(d, S(940), T(608), "DATA ANALYST × AI ENGINEER", 8, CYAN, True)
-label(d, S(868), T(640), "EDUCATION", 9)
-text(d, S(940), T(637), "IIT MADRAS", 10, WHITE, True)
-label(d, S(868), T(669), "SESSION", 9)
-text(d, S(940), T(666), "ACTIVE / PUBLIC", 9, GREEN, True)
+def T(value):
+    return int(value * SY)
 
-# ------------------------------------------------------------
-# RIGHT LOWER — LIVE GITHUB FEED (REAL VALUES)
-# ------------------------------------------------------------
-feed = scaled((1185, 320, 1635, 685), sx, sy)
-hud_panel(d, feed, S(16))
-corner_marks(d, feed)
-label(d, S(1210), T(343), "// LIVE GITHUB FEED", 10)
-label(d, S(1210), T(371), "PUBLIC SIGNAL", 8, GREEN)
 
-feed_items = [
-    ("REPOSITORIES", f"{gh['repos']:02d}"),
-    ("FOLLOWERS", f"{gh['followers']:02d}"),
-    ("ACCOUNT", "CONNECTED"),
-    ("VISIBILITY", "PUBLIC"),
-    ("STATUS", "OPERATIONAL"),
+# ============================================================
+# FETCH DATA
+# ============================================================
+
+github = get_github_data()
+
+
+# ============================================================
+# CREATE HUD LAYERS
+# ============================================================
+
+overlay = Image.new(
+    "RGBA",
+    (WIDTH, HEIGHT),
+    (0, 0, 0, 0),
+)
+
+glow_layer = Image.new(
+    "RGBA",
+    (WIDTH, HEIGHT),
+    (0, 0, 0, 0),
+)
+
+draw = ImageDraw.Draw(overlay)
+
+
+# ============================================================
+# 01 — SYSTEM STATUS
+# ============================================================
+
+system_box = (
+    S(18),
+    T(48),
+    S(325),
+    T(405),
+)
+
+glow_panel(
+    glow_layer,
+    system_box,
+)
+
+clipped_panel(
+    draw,
+    system_box,
+    cut=S(14),
+    fill=GLASS,
+    outline=CYAN_SOFT,
+)
+
+corner_marks(
+    draw,
+    system_box,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(72),
+    "// SYSTEM STATUS",
+    10,
+)
+
+text_title(
+    draw,
+    S(38),
+    T(98),
+    "OPERATIONAL",
+    23,
+)
+
+# Online indicator
+
+draw.ellipse(
+    (
+        S(286),
+        T(100),
+        S(296),
+        T(110),
+    ),
+    fill=GREEN,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(135),
+    "PROFILE ONLINE",
+    9,
+    GREEN,
+)
+
+line(
+    draw,
+    S(38),
+    T(161),
+    S(300),
+    T(161),
+    CYAN_DIM,
+)
+
+# Decorative signal waveform
+
+wave_points = []
+
+wave_pattern = [
+    0,
+    -3,
+    2,
+    5,
+    1,
+    -2,
+    4,
+    0,
+    3,
+    -1,
 ]
 
-y = 405
-for key, value in feed_items:
-    label(d, S(1210), T(y), key, 9)
-    text(d, S(1390), T(y - 1), value, 9, GREEN if value in {"CONNECTED", "OPERATIONAL"} else WHITE, True)
-    draw_line(d, S(1210), T(y + 21), S(1610), T(y + 21), CYAN_DIM)
-    y += 43
+for i in range(120):
 
-label(d, S(1210), T(635), "ACTIVITY SIGNAL", 8)
-# Tiny synthetic visualizer for aesthetics only — not presented as real statistics.
-vals = [2, 6, 4, 10, 7, 13, 5, 9, 11, 7, 14, 9, 16, 12, 18, 10]
-for i, v in enumerate(vals):
-    x = S(1215 + i * 23)
-    d.rectangle((x, T(675 - v), x + S(10), T(675)), fill=CYAN_SOFT)
+    x = S(38) + S(i)
 
-# ------------------------------------------------------------
-# FAR RIGHT — MOTIVATION
-# ------------------------------------------------------------
-motivation = scaled((1665, 50, 1902, 315), sx, sy)
-hud_panel(d, motivation, S(16))
-corner_marks(d, motivation)
-label(d, S(1690), T(72), "// MOTIVATION", 9)
-text(d, S(1690), T(112), "DISCIPLINE", 18, WHITE, True)
-text(d, S(1740), T(141), "TODAY", 18, WHITE, True)
-draw_line(d, S(1700), T(183), S(1865), T(183), VIOLET_SOFT)
-text(d, S(1700), T(205), "FREEDOM", 18, WHITE, True)
-text(d, S(1730), T(234), "TOMORROW", 18, WHITE, True)
-label(d, S(1700), T(278), "BUILD  //  LEARN  //  EVOLVE", 7, CYAN)
+    y = (
+        T(181)
+        + T(
+            wave_pattern[
+                i % len(wave_pattern)
+            ]
+        )
+    )
 
-# ------------------------------------------------------------
-# MICRO HUD DETAILS
-# ------------------------------------------------------------
-label(d, S(855), T(482), "FOCUS  >  EXECUTE  >  SUCCEED", 8)
-label(d, S(1745), T(335), "SYS // PROFILE // ACTIVE", 7)
-label(d, S(35), T(700), "NODE 01", 7)
-label(d, S(95), T(700), "SECURE", 7, GREEN)
-label(d, S(1810), T(24), "LIVE", 7, GREEN)
+    wave_points.append(
+        (x, y)
+    )
 
-result = Image.alpha_composite(base, layer).convert("RGB")
-result.save(OUTPUT_IMAGE, quality=95)
+if len(wave_points) > 1:
+
+    draw.line(
+        wave_points,
+        fill=CYAN_SOFT,
+        width=1,
+    )
+
+text_label(
+    draw,
+    S(38),
+    T(205),
+    "// ACCOUNT SIGNAL",
+    9,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(232),
+    f"REPOSITORIES   {github['repos']:02d}",
+    10,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(255),
+    f"FOLLOWERS      {github['followers']:02d}",
+    10,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(278),
+    f"FOLLOWING      {github['following']:02d}",
+    10,
+)
+
+line(
+    draw,
+    S(38),
+    T(302),
+    S(300),
+    T(302),
+    CYAN_DIM,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(320),
+    "// NETWORK",
+    9,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(344),
+    "GITHUB          CONNECTED",
+    9,
+    GREEN,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(368),
+    "API SIGNAL      ACTIVE",
+    9,
+)
+
+
+# ============================================================
+# 02 — SKILLS
+# ============================================================
+
+skills_box = (
+    S(18),
+    T(420),
+    S(325),
+    T(625),
+)
+
+clipped_panel(
+    draw,
+    skills_box,
+    cut=S(14),
+    fill=GLASS,
+    outline=VIOLET_SOFT,
+)
+
+corner_marks(
+    draw,
+    skills_box,
+)
+
+text_label(
+    draw,
+    S(38),
+    T(442),
+    "// SKILL MATRIX",
+    10,
+)
+
+skill_y = 469
+
+for index, skill in enumerate(
+    SKILLS[:7]
+):
+
+    accent = (
+        CYAN_SOFT
+        if index % 2 == 0
+        else VIOLET_SOFT
+    )
+
+    draw.ellipse(
+        (
+            S(40),
+            T(skill_y + 3),
+            S(47),
+            T(skill_y + 10),
+        ),
+        outline=accent,
+        width=1,
+    )
+
+    draw.text(
+        (
+            S(58),
+            T(skill_y),
+        ),
+        skill,
+        font=font(10),
+        fill=WHITE,
+    )
+
+    line(
+        draw,
+        S(58),
+        T(skill_y + 19),
+        S(298),
+        T(skill_y + 19),
+        (65, 190, 255, 28),
+    )
+
+    skill_y += 29
+
+
+# ============================================================
+# 03 — LATEST REPOSITORY
+# ============================================================
+
+latest_box = (
+    S(845),
+    T(515),
+    S(1118),
+    T(705),
+)
+
+glow_panel(
+    glow_layer,
+    latest_box,
+)
+
+clipped_panel(
+    draw,
+    latest_box,
+    cut=S(16),
+    fill=GLASS_DARK,
+    outline=VIOLET_SOFT,
+)
+
+corner_marks(
+    draw,
+    latest_box,
+)
+
+text_label(
+    draw,
+    S(868),
+    T(537),
+    "// LATEST REPOSITORY",
+    9,
+)
+
+latest_name = (
+    github["latest_name"]
+)
+
+latest_name_font = fit_text(
+    draw,
+    latest_name.upper(),
+    S(220),
+    16,
+    8,
+    bold=True,
+)
+
+draw.text(
+    (
+        S(868),
+        T(562),
+    ),
+    latest_name.upper(),
+    font=latest_name_font,
+    fill=CYAN,
+)
+
+line(
+    draw,
+    S(868),
+    T(594),
+    S(1094),
+    T(594),
+    CYAN_DIM,
+)
+
+description_font = font(
+    8
+)
+
+description_lines = wrap_text(
+    draw,
+    github["latest_description"],
+    S(215),
+    description_font,
+)
+
+for i, desc_line in enumerate(
+    description_lines[:3]
+):
+
+    draw.text(
+        (
+            S(868),
+            T(
+                607 + i * 15
+            ),
+        ),
+        desc_line.upper(),
+        font=description_font,
+        fill=WHITE_DIM,
+    )
+
+meta_y = 662
+
+text_label(
+    draw,
+    S(868),
+    T(meta_y),
+    f"LANGUAGE   {github['latest_language']}",
+    8,
+)
+
+text_label(
+    draw,
+    S(868),
+    T(meta_y + 18),
+    "SOURCE     GITHUB",
+    8,
+    GREEN,
+)
+
+
+# ============================================================
+# 04 — OPERATOR PROFILE
+# ============================================================
+
+profile_box = (
+    S(1195),
+    T(28),
+    S(1660),
+    T(205),
+)
+
+clipped_panel(
+    draw,
+    profile_box,
+    cut=S(18),
+    fill=GLASS,
+    outline=CYAN_SOFT,
+)
+
+corner_marks(
+    draw,
+    profile_box,
+)
+
+text_label(
+    draw,
+    S(1220),
+    T(51),
+    "// OPERATOR PROFILE",
+    10,
+)
+
+text_title(
+    draw,
+    S(1220),
+    T(78),
+    NAME,
+    23,
+)
+
+title_font = fit_text(
+    draw,
+    TITLE,
+    S(390),
+    14,
+    9,
+    bold=True,
+)
+
+draw.text(
+    (
+        S(1220),
+        T(114),
+    ),
+    TITLE,
+    font=title_font,
+    fill=VIOLET,
+)
+
+line(
+    draw,
+    S(1220),
+    T(145),
+    S(1625),
+    T(145),
+    CYAN_DIM,
+)
+
+text_label(
+    draw,
+    S(1220),
+    T(159),
+    PROGRAM,
+    8,
+)
+
+text_label(
+    draw,
+    S(1220),
+    T(178),
+    f"// {COLLEGE}",
+    9,
+    WHITE,
+)
+
+
+# ============================================================
+# 05 — REAL-TIME GITHUB FEED
+# ============================================================
+
+feed_box = (
+    S(1215),
+    T(435),
+    S(1635),
+    T(685),
+)
+
+glow_panel(
+    glow_layer,
+    feed_box,
+)
+
+clipped_panel(
+    draw,
+    feed_box,
+    cut=S(16),
+    fill=GLASS,
+    outline=CYAN_SOFT,
+)
+
+corner_marks(
+    draw,
+    feed_box,
+)
+
+text_label(
+    draw,
+    S(1240),
+    T(457),
+    "// REAL-TIME GITHUB FEED",
+    9,
+)
+
+text_label(
+    draw,
+    S(1240),
+    T(486),
+    "LATEST COMMIT",
+    8,
+)
+
+commit_sha = (
+    github["latest_sha"]
+)
+
+draw.text(
+    (
+        S(1240),
+        T(508),
+    ),
+    f"#{commit_sha}",
+    font=font(
+        12,
+        bold=True,
+    ),
+    fill=CYAN,
+)
+
+feed_repo_font = fit_text(
+    draw,
+    github["latest_name"].upper(),
+    S(330),
+    8,
+    7,
+)
+
+draw.text(
+    (
+        S(1240),
+        T(540),
+    ),
+    github["latest_name"].upper(),
+    font=feed_repo_font,
+    fill=WHITE,
+)
+
+line(
+    draw,
+    S(1240),
+    T(561),
+    S(1605),
+    T(561),
+    CYAN_DIM,
+)
+
+text_label(
+    draw,
+    S(1240),
+    T(575),
+    f"AUTHOR      {github['latest_author']}",
+    8,
+)
+
+text_label(
+    draw,
+    S(1240),
+    T(600),
+    f"DATE        {github['latest_commit_date']}",
+    8,
+)
+
+text_label(
+    draw,
+    S(1240),
+    T(623),
+    f"TIME        {github['latest_commit_time']} IST",
+    8,
+    GREEN,
+)
+
+line(
+    draw,
+    S(1240),
+    T(645),
+    S(1605),
+    T(645),
+    CYAN_DIM,
+)
+
+text_label(
+    draw,
+    S(1240),
+    T(659),
+    "ACCOUNT      CONNECTED",
+    8,
+    GREEN,
+)
+
+text_label(
+    draw,
+    S(1435),
+    T(659),
+    f"REPOS {github['repos']:02d}",
+    8,
+)
+
+# Small decorative graph
+
+graph_points = []
+
+graph_pattern = [
+    0,
+    3,
+    -2,
+    4,
+    1,
+    -1,
+    5,
+    -3,
+    2,
+    1,
+]
+
+for i in range(65):
+
+    x = (
+        S(1435)
+        + int(i * S(2.1))
+    )
+
+    y = (
+        T(681)
+        + T(
+            graph_pattern[
+                i % len(graph_pattern)
+            ]
+        )
+    )
+
+    graph_points.append(
+        (x, y)
+    )
+
+if len(graph_points) > 1:
+
+    draw.line(
+        graph_points,
+        fill=VIOLET_SOFT,
+        width=1,
+    )
+
+
+# ============================================================
+# 06 — MOTIVATION
+# ============================================================
+
+motivation_box = (
+    S(1665),
+    T(50),
+    S(1902),
+    T(315),
+)
+
+clipped_panel(
+    draw,
+    motivation_box,
+    cut=S(16),
+    fill=GLASS,
+    outline=VIOLET_SOFT,
+)
+
+corner_marks(
+    draw,
+    motivation_box,
+)
+
+text_label(
+    draw,
+    S(1690),
+    T(72),
+    "// MOTIVATION",
+    9,
+)
+
+draw.text(
+    (
+        S(1690),
+        T(112),
+    ),
+    "DISCIPLINE",
+    font=font(
+        17,
+        bold=True,
+    ),
+    fill=WHITE,
+)
+
+draw.text(
+    (
+        S(1738),
+        T(142),
+    ),
+    "TODAY",
+    font=font(
+        17,
+        bold=True,
+    ),
+    fill=CYAN,
+)
+
+line(
+    draw,
+    S(1700),
+    T(182),
+    S(1865),
+    T(182),
+    CYAN_DIM,
+)
+
+draw.text(
+    (
+        S(1700),
+        T(207),
+    ),
+    "FREEDOM",
+    font=font(
+        17,
+        bold=True,
+    ),
+    fill=WHITE,
+)
+
+draw.text(
+    (
+        S(1726),
+        T(237),
+    ),
+    "TOMORROW",
+    font=font(
+        17,
+        bold=True,
+    ),
+    fill=VIOLET,
+)
+
+draw.ellipse(
+    (
+        S(1777),
+        T(280),
+        S(1787),
+        T(290),
+    ),
+    outline=CYAN_SOFT,
+    width=1,
+)
+
+line(
+    draw,
+    S(1705),
+    T(285),
+    S(1760),
+    T(285),
+    CYAN_DIM,
+)
+
+line(
+    draw,
+    S(1805),
+    T(285),
+    S(1860),
+    T(285),
+    VIOLET_SOFT,
+)
+
+
+# ============================================================
+# 07 — MICRO HUD DETAILS
+# ============================================================
+
+text_label(
+    draw,
+    S(858),
+    T(480),
+    "FOCUS > EXECUTE > SUCCEED",
+    7,
+)
+
+text_label(
+    draw,
+    S(1752),
+    T(330),
+    "SYS // PROFILE // ACTIVE",
+    7,
+)
+
+text_label(
+    draw,
+    S(35),
+    T(698),
+    "NODE 01",
+    7,
+)
+
+text_label(
+    draw,
+    S(95),
+    T(698),
+    "SECURE",
+    7,
+    GREEN,
+)
+
+text_label(
+    draw,
+    S(1810),
+    T(25),
+    "LIVE",
+    7,
+    GREEN,
+)
+
+
+# ============================================================
+# COMPOSITE
+# ============================================================
+
+# Put glow underneath the HUD itself.
+overlay = Image.alpha_composite(
+    glow_layer,
+    overlay,
+)
+
+result = Image.alpha_composite(
+    base,
+    overlay,
+).convert("RGB")
+
+result.save(
+    OUTPUT_IMAGE,
+    format="PNG",
+    optimize=True,
+)
+
+
+# ============================================================
+# ACTION LOG
+# ============================================================
 
 print("==============================================")
 print("HUD GENERATED SUCCESSFULLY")
-print(f"Output: {OUTPUT_IMAGE}")
-print(f"GitHub repositories: {gh['repos']}")
-print(f"GitHub followers: {gh['followers']}")
-print("Clock/date intentionally omitted from the image.")
+print("----------------------------------------------")
+print(f"GitHub repositories : {github['repos']}")
+print(f"GitHub followers    : {github['followers']}")
+print(f"GitHub following    : {github['following']}")
+print(f"Latest repository   : {github['latest_name']}")
+print(f"Latest language     : {github['latest_language']}")
+print(f"Latest commit SHA   : {github['latest_sha']}")
+print(f"Latest commit author: {github['latest_author']}")
+print(f"Latest commit date  : {github['latest_commit_date']}")
+print(f"Latest commit time  : {github['latest_commit_time']} IST")
+print("----------------------------------------------")
+print("Normal live clock   : REMOVED")
+print(f"Output              : {OUTPUT_IMAGE}")
 print("==============================================")

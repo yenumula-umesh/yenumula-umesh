@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: profile-hud-update
+  group: profile-hud
   cancel-in-progress: true
 
 jobs:
@@ -31,45 +31,80 @@ jobs:
           python -m pip install --upgrade pip
           pip install Pillow
 
-      - name: Generate live HUD
+      - name: Generate hero-live.png
         run: |
           python scripts/generate_hud.py
 
-      - name: Create or update hero-live.png
+      - name: Upload hero-live.png
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          set -e
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          import urllib.error
+          import urllib.request
 
-          REPO="${{ github.repository }}"
-          FILE="hero-live.png"
+          repo = os.environ["REPOSITORY"]
+          token = os.environ["GITHUB_TOKEN"]
 
-          CONTENT=$(base64 -w 0 "$FILE")
+          file_path = "hero-live.png"
+          api_url = f"https://api.github.com/repos/{repo}/contents/{file_path}"
 
-          FILE_SHA=$(gh api \
-            "repos/$REPO/contents/$FILE?ref=main" \
-            --jq '.sha' 2>/dev/null || true)
+          with open(file_path, "rb") as file:
+              content = base64.b64encode(file.read()).decode("ascii")
 
-          if [ -n "$FILE_SHA" ]; then
-            echo "hero-live.png exists. Updating it..."
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "umesh-profile-hud",
+              "Content-Type": "application/json",
+          }
 
-            gh api \
-              --method PUT \
-              "repos/$REPO/contents/$FILE" \
-              -f message="Update profile HUD" \
-              -f content="$CONTENT" \
-              -f sha="$FILE_SHA" \
-              -f branch="main"
+          # Check whether the file already exists.
+          sha = None
 
-          else
-            echo "hero-live.png does not exist. Creating it..."
+          request = urllib.request.Request(
+              api_url + "?ref=main",
+              headers=headers,
+              method="GET",
+          )
 
-            gh api \
-              --method PUT \
-              "repos/$REPO/contents/$FILE" \
-              -f message="Create profile HUD" \
-              -f content="$CONTENT" \
-              -f branch="main"
-          fi
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  existing = json.loads(response.read().decode("utf-8"))
+                  sha = existing.get("sha")
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
 
-          echo "hero-live.png successfully created/updated."
+          payload = {
+              "message": "Update profile HUD",
+              "content": content,
+              "branch": "main",
+          }
+
+          if sha:
+              payload["sha"] = sha
+              print("Updating existing hero-live.png")
+          else:
+              print("Creating new hero-live.png")
+
+          body = json.dumps(payload).encode("utf-8")
+
+          request = urllib.request.Request(
+              api_url,
+              data=body,
+              headers=headers,
+              method="PUT",
+          )
+
+          with urllib.request.urlopen(request, timeout=120) as response:
+              result = json.loads(response.read().decode("utf-8"))
+
+          print("hero-live.png successfully uploaded.")
+          print("Commit:", result["commit"]["sha"])
+          PY

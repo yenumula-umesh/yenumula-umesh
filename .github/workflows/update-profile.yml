@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -33,48 +31,46 @@ jobs:
           python -m pip install --upgrade pip
           pip install Pillow
 
-      - name: Sync with latest main
-        run: |
-          git fetch origin main
-          git reset --hard origin/main
-
       - name: Generate live HUD
         run: |
           python scripts/generate_hud.py
 
-      - name: Commit and push HUD
+      - name: Update hero-live.png through GitHub API
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set -e
+
+          REPO="${{ github.repository }}"
+          FILE="hero-live.png"
 
           for attempt in 1 2 3 4 5
           do
-            echo "===== PUSH ATTEMPT $attempt ====="
+            echo "===== API UPDATE ATTEMPT $attempt ====="
 
-            git fetch origin main
-            git reset --hard origin/main
+            FILE_SHA=$(gh api \
+              "repos/$REPO/contents/$FILE?ref=main" \
+              --jq '.sha')
 
-            python scripts/generate_hud.py
+            echo "Current remote file SHA: $FILE_SHA"
 
-            git add hero-live.png
+            CONTENT=$(base64 -w 0 "$FILE")
 
-            if git diff --cached --quiet
+            if gh api \
+              --method PUT \
+              "repos/$REPO/contents/$FILE" \
+              -f message="Update profile HUD" \
+              -f content="$CONTENT" \
+              -f sha="$FILE_SHA" \
+              -f branch="main"
             then
-              echo "No changes to hero-live.png"
+              echo "hero-live.png updated successfully."
               exit 0
             fi
 
-            git commit -m "Update profile HUD"
-
-            if git push origin HEAD:main
-            then
-              echo "HUD update pushed successfully."
-              exit 0
-            fi
-
-            echo "Push rejected. Retrying..."
+            echo "Remote file changed. Retrying..."
             sleep 5
           done
 
-          echo "ERROR: Could not push HUD update."
+          echo "Failed to update hero-live.png after 5 attempts."
           exit 1

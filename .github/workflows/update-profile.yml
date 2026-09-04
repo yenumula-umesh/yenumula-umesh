@@ -35,7 +35,7 @@ jobs:
         run: |
           python scripts/generate_hud.py
 
-      - name: Update hero-live.png through GitHub API
+      - name: Create or update hero-live.png
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -44,33 +44,32 @@ jobs:
           REPO="${{ github.repository }}"
           FILE="hero-live.png"
 
-          for attempt in 1 2 3 4 5
-          do
-            echo "===== API UPDATE ATTEMPT $attempt ====="
+          CONTENT=$(base64 -w 0 "$FILE")
 
-            FILE_SHA=$(gh api \
-              "repos/$REPO/contents/$FILE?ref=main" \
-              --jq '.sha')
+          FILE_SHA=$(gh api \
+            "repos/$REPO/contents/$FILE?ref=main" \
+            --jq '.sha' 2>/dev/null || true)
 
-            echo "Current remote file SHA: $FILE_SHA"
+          if [ -n "$FILE_SHA" ]; then
+            echo "hero-live.png exists. Updating it..."
 
-            CONTENT=$(base64 -w 0 "$FILE")
-
-            if gh api \
+            gh api \
               --method PUT \
               "repos/$REPO/contents/$FILE" \
               -f message="Update profile HUD" \
               -f content="$CONTENT" \
               -f sha="$FILE_SHA" \
               -f branch="main"
-            then
-              echo "hero-live.png updated successfully."
-              exit 0
-            fi
 
-            echo "Remote file changed. Retrying..."
-            sleep 5
-          done
+          else
+            echo "hero-live.png does not exist. Creating it..."
 
-          echo "Failed to update hero-live.png after 5 attempts."
-          exit 1
+            gh api \
+              --method PUT \
+              "repos/$REPO/contents/$FILE" \
+              -f message="Create profile HUD" \
+              -f content="$CONTENT" \
+              -f branch="main"
+          fi
+
+          echo "hero-live.png successfully created/updated."

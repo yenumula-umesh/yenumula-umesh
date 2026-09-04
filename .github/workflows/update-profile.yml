@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# Prevent two HUD updates from running at the same time.
+concurrency:
+  group: profile-hud-update
+  cancel-in-progress: true
+
 jobs:
   update-hud:
     runs-on: ubuntu-latest
@@ -32,7 +37,7 @@ jobs:
         run: |
           python scripts/generate_hud.py
 
-      - name: Commit updated HUD
+      - name: Commit and push updated HUD
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -46,7 +51,25 @@ jobs:
 
           git commit -m "Update profile HUD"
 
-          git fetch origin main
-          git rebase origin/main
+          # Retry the push in case main changes while the workflow is running.
+          for attempt in 1 2 3 4 5; do
+            echo "Push attempt $attempt"
 
-          git push origin HEAD:main
+            git fetch origin main
+
+            if git rebase origin/main; then
+              if git push origin HEAD:main; then
+                echo "HUD update pushed successfully."
+                exit 0
+              fi
+            else
+              echo "Rebase failed. Aborting rebase."
+              git rebase --abort || true
+            fi
+
+            echo "Push failed. Waiting before retry..."
+            sleep 5
+          done
+
+          echo "Could not push HUD update after 5 attempts."
+          exit 1

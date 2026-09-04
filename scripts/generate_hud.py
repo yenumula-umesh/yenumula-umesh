@@ -1,952 +1,285 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from pathlib import Path
 import urllib.request
 import json
 
 # ============================================================
 # UMESH YENUMULA — CINEMATIC GITHUB HUD
+# Time/date intentionally NOT rendered into the image.
+# GitHub numbers are refreshed whenever this workflow runs.
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 INPUT_IMAGE = BASE_DIR / "hero.png"
 OUTPUT_IMAGE = BASE_DIR / "hero-live.png"
 
-# -------------------------
-# PERSONAL INFORMATION
-# -------------------------
-
 NAME = "UMESH YENUMULA"
 TITLE = "DATA ANALYST  ×  AI ENGINEER"
 EDUCATION = "BS IN DATA SCIENCE & APPLICATIONS"
 COLLEGE = "IIT MADRAS"
-
-EMAIL = "AVAILABLE VIA GITHUB"
-
-SKILLS = [
-    "PYTHON",
-    "FLASK",
-    "TELETHON",
-    "REST APIs",
-    "NUMPY",
-    "GIT / GITHUB",
-    "HTML / CSS",
-    "C / C++",
-    "SQL / DBMS",
-]
-
 GITHUB_USERNAME = "yenumula-umesh"
 
-# ============================================================
-# COLORS
-# ============================================================
+SKILLS = [
+    "PYTHON", "FLASK", "TELETHON", "REST APIs", "NUMPY",
+    "GIT / GITHUB", "HTML / CSS", "C / C++", "SQL / DBMS"
+]
 
-CYAN = (65, 190, 255, 235)
-CYAN_SOFT = (65, 190, 255, 125)
-CYAN_DIM = (65, 190, 255, 75)
-
-WHITE = (220, 238, 248, 235)
-WHITE_DIM = (170, 200, 215, 180)
-
-DARK = (3, 12, 20, 160)
-DARK_SOFT = (3, 12, 20, 105)
-
-GREEN = (65, 255, 170, 230)
-
-# ============================================================
-# FONT LOADING
-# ============================================================
+# Visual palette — restrained so it blends with the original image.
+CYAN = (65, 205, 255, 235)
+CYAN_SOFT = (65, 205, 255, 125)
+CYAN_DIM = (65, 205, 255, 55)
+VIOLET_SOFT = (145, 100, 255, 115)
+WHITE = (225, 241, 248, 235)
+WHITE_DIM = (170, 202, 218, 175)
+GREEN = (70, 255, 170, 235)
+DARK = (3, 11, 20, 150)
+DARK_DEEP = (3, 10, 18, 180)
 
 FONT_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
 ]
-
-FONT_BOLD_PATHS = [
+BOLD_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
 ]
 
 
 def find_font(paths):
-    for path in paths:
-        if Path(path).exists():
-            return path
+    for p in paths:
+        if Path(p).exists():
+            return p
     return None
 
 
-FONT_REGULAR = find_font(FONT_PATHS)
-FONT_BOLD = find_font(FONT_BOLD_PATHS)
+REGULAR = find_font(FONT_PATHS)
+BOLD = find_font(BOLD_PATHS)
 
 
-def font(size, bold=False):
-    path = FONT_BOLD if bold else FONT_REGULAR
-
-    if path:
-        return ImageFont.truetype(path, size=size)
-
-    return ImageFont.load_default()
+def f(size, bold=False):
+    path = BOLD if bold else REGULAR
+    return ImageFont.truetype(path, size) if path else ImageFont.load_default()
 
 
-# ============================================================
-# HELPERS
-# ============================================================
-
-def rounded_hud(draw, box, radius=16, fill=DARK_SOFT,
-                outline=CYAN_SOFT, width=1):
-    """
-    Transparent futuristic HUD panel.
-    """
-    draw.rounded_rectangle(
-        box,
-        radius=radius,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
+def scaled(box, sx, sy):
+    return tuple(int(v * (sx if i % 2 == 0 else sy)) for i, v in enumerate(box))
 
 
-def clipped_panel(draw, box, cut=16, fill=DARK_SOFT,
-                  outline=CYAN_SOFT, width=1):
-    """
-    Futuristic panel with cut corners.
-    """
+def draw_line(d, x1, y1, x2, y2, fill=CYAN_DIM, width=1):
+    d.line((x1, y1, x2, y2), fill=fill, width=width)
+
+
+def hud_panel(d, box, cut=14, fill=DARK, outline=CYAN_SOFT):
     x1, y1, x2, y2 = box
-
-    points = [
-        (x1 + cut, y1),
-        (x2 - cut, y1),
-        (x2, y1 + cut),
-        (x2, y2 - cut),
-        (x2 - cut, y2),
-        (x1 + cut, y2),
-        (x1, y2 - cut),
-        (x1, y1 + cut),
+    pts = [
+        (x1 + cut, y1), (x2 - cut, y1), (x2, y1 + cut),
+        (x2, y2 - cut), (x2 - cut, y2), (x1 + cut, y2),
+        (x1, y2 - cut), (x1, y1 + cut)
     ]
-
-    draw.polygon(points, fill=fill)
-
-    # Border
-    draw.line(
-        points + [points[0]],
-        fill=outline,
-        width=width,
-        joint="curve"
-    )
+    d.polygon(pts, fill=fill)
+    d.line(pts + [pts[0]], fill=outline, width=1, joint="curve")
 
 
-def line(draw, x1, y1, x2, y2, fill=CYAN_DIM, width=1):
-    draw.line((x1, y1, x2, y2), fill=fill, width=width)
-
-
-def label(draw, x, y, text, size=12, fill=WHITE_DIM):
-    draw.text(
-        (x, y),
-        text.upper(),
-        font=font(size),
-        fill=fill
-    )
-
-
-def title(draw, x, y, text, size=26, fill=CYAN):
-    draw.text(
-        (x, y),
-        text,
-        font=font(size, bold=True),
-        fill=fill
-    )
-
-
-def draw_corner_marks(draw, box, length=18):
+def corner_marks(d, box, length=16):
     x1, y1, x2, y2 = box
-
-    # top left
-    line(draw, x1, y1 + length, x1, y1, CYAN_SOFT, 1)
-    line(draw, x1, y1, x1 + length, y1, CYAN_SOFT, 1)
-
-    # top right
-    line(draw, x2 - length, y1, x2, y1, CYAN_SOFT, 1)
-    line(draw, x2, y1, x2, y1 + length, CYAN_SOFT, 1)
-
-    # bottom left
-    line(draw, x1, y2 - length, x1, y2, CYAN_SOFT, 1)
-    line(draw, x1, y2, x1 + length, y2, CYAN_SOFT, 1)
-
-    # bottom right
-    line(draw, x2 - length, y2, x2, y2, CYAN_SOFT, 1)
-    line(draw, x2, y2 - length, x2, y2, CYAN_SOFT, 1)
+    c = CYAN_SOFT
+    draw_line(d, x1, y1 + length, x1, y1, c)
+    draw_line(d, x1, y1, x1 + length, y1, c)
+    draw_line(d, x2 - length, y1, x2, y1, c)
+    draw_line(d, x2, y1, x2, y1 + length, c)
+    draw_line(d, x1, y2 - length, x1, y2, c)
+    draw_line(d, x1, y2, x1 + length, y2, c)
+    draw_line(d, x2 - length, y2, x2, y2, c)
+    draw_line(d, x2, y2 - length, x2, y2, c)
 
 
-def glow_panel(base, box, blur=8):
-    """
-    Adds a very subtle cyan glow behind the HUD.
-    """
-    glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-
-    x1, y1, x2, y2 = box
-
-    gd.rounded_rectangle(
-        box,
-        radius=15,
-        outline=CYAN,
-        width=3
-    )
-
-    glow = glow.filter(ImageFilter.GaussianBlur(blur))
-    base.alpha_composite(glow)
+def glow(base, box):
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    ld.rounded_rectangle(box, radius=14, outline=CYAN, width=3)
+    base.alpha_composite(layer.filter(ImageFilter.GaussianBlur(8)))
 
 
-# ============================================================
-# LIVE GITHUB INFORMATION
-# ============================================================
+def label(d, x, y, text, size=10, fill=WHITE_DIM):
+    d.text((x, y), text.upper(), font=f(size), fill=fill)
 
-def get_github_data():
-    """
-    Gets public GitHub information.
-    If API access fails, fallback values are used.
-    """
 
-    fallback = {
-        "repos": 3,
-        "followers": 0,
-        "following": 0,
-        "public_gists": 0,
-    }
+def text(d, x, y, value, size=12, fill=WHITE, bold=False):
+    d.text((x, y), value, font=f(size, bold), fill=fill)
 
+
+def github_data():
+    fallback = {"repos": 0, "followers": 0}
     url = f"https://api.github.com/users/{GITHUB_USERNAME}"
-
     try:
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "github-profile-hud"
-            }
-        )
-
-        with urllib.request.urlopen(req, timeout=8) as response:
-            data = json.loads(response.read().decode("utf-8"))
-
+        req = urllib.request.Request(url, headers={"User-Agent": "umesh-profile-hud"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read().decode("utf-8"))
         return {
-            "repos": data.get("public_repos", 0),
-            "followers": data.get("followers", 0),
-            "following": data.get("following", 0),
-            "public_gists": data.get("public_gists", 0),
+            "repos": int(data.get("public_repos", 0)),
+            "followers": int(data.get("followers", 0)),
         }
-
     except Exception:
         return fallback
 
 
-# ============================================================
-# LOAD IMAGE
-# ============================================================
-
 if not INPUT_IMAGE.exists():
-    raise FileNotFoundError(
-        f"Could not find hero.png at: {INPUT_IMAGE}"
-    )
+    raise FileNotFoundError(f"Could not find hero.png at {INPUT_IMAGE}")
 
 base = Image.open(INPUT_IMAGE).convert("RGBA")
+W, H = base.size
+sx, sy = W / 1920, H / 768
+S = lambda x: int(x * sx)
+T = lambda y: int(y * sy)
 
-WIDTH, HEIGHT = base.size
+layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+d = ImageDraw.Draw(layer)
+gh = github_data()
 
-# We design around a 1920x768 image.
-# Scaling keeps the HUD proportional for other resolutions.
+# ------------------------------------------------------------
+# LEFT — SYSTEM STATUS (NO CLOCK)
+# ------------------------------------------------------------
+system = scaled((18, 48, 325, 355), sx, sy)
+glow(layer, system)
+hud_panel(d, system, S(14))
+corner_marks(d, system)
+label(d, S(38), T(70), "// SYSTEM STATUS", 11)
+text(d, S(38), T(96), "OPERATIONAL", 25, GREEN, True)
+d.ellipse((S(286), T(99), S(296), T(109)), fill=GREEN)
+label(d, S(38), T(133), "SYSTEM ONLINE", 9, GREEN)
 
-SX = WIDTH / 1920
-SY = HEIGHT / 768
-
-
-def S(x):
-    return int(x * SX)
-
-
-def T(y):
-    return int(y * SY)
-
-
-# ============================================================
-# DRAWING LAYER
-# ============================================================
-
-overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-draw = ImageDraw.Draw(overlay)
-
-
-# ============================================================
-# LIVE IST TIME
-# ============================================================
-
-now = datetime.now(ZoneInfo("Asia/Kolkata"))
-
-current_time = now.strftime("%H:%M:%S")
-current_date = now.strftime("%d %b %Y").upper()
-weekday = now.strftime("%A").upper()
-
-
-# ============================================================
-# GITHUB
-# ============================================================
-
-github = get_github_data()
-
-
-# ============================================================
-# 01 — SYSTEM STATUS
-# LEFT SIDE
-# ============================================================
-
-system_box = (
-    S(18),
-    T(48),
-    S(325),
-    T(405),
-)
-
-glow_panel(overlay, system_box)
-
-clipped_panel(
-    draw,
-    system_box,
-    cut=S(14),
-    fill=DARK_SOFT,
-    outline=CYAN_SOFT
-)
-
-draw_corner_marks(draw, system_box)
-
-label(
-    draw,
-    S(38),
-    T(72),
-    "// SYSTEM STATUS",
-    12
-)
-
-title(
-    draw,
-    S(38),
-    T(97),
-    "OPERATIONAL",
-    26
-)
-
-# live indicator
-draw.ellipse(
-    (S(286), T(99), S(296), T(109)),
-    fill=GREEN
-)
-
-label(
-    draw,
-    S(38),
-    T(136),
-    "SYSTEM ONLINE",
-    10,
-    GREEN
-)
-
-# tiny waveform
-wave_x = S(38)
-wave_y = T(168)
-
+# visual signal strip
 points = []
+for i in range(150):
+    x = S(38) + S(i)
+    pattern = [0, -3, 2, -1, 5, -2, 1, 0, 3, -1]
+    y = T(166) + T(pattern[i % len(pattern)])
+    points.append((x, y))
+d.line(points, fill=CYAN_SOFT, width=1)
 
-for i in range(145):
-    px = wave_x + S(i)
-    py = wave_y + int(
-        T(10)
-        * ((i % 9) / 8)
-        * (1 if i % 2 == 0 else -1)
-    )
+draw_line(d, S(38), T(188), S(300), T(188))
+label(d, S(38), T(206), "// PROFILE SIGNAL", 9)
+label(d, S(38), T(237), f"REPOSITORIES    {gh['repos']:02d}", 10, WHITE)
+label(d, S(38), T(264), f"FOLLOWERS       {gh['followers']:02d}", 10, WHITE)
+label(d, S(38), T(291), "GITHUB          CONNECTED", 10, GREEN)
+label(d, S(38), T(318), "NETWORK         ONLINE", 10, GREEN)
 
-    points.append((px, py))
+# ------------------------------------------------------------
+# LEFT LOWER — SKILL MATRIX
+# ------------------------------------------------------------
+skills_box = scaled((18, 372, 325, 625), sx, sy)
+hud_panel(d, skills_box, S(14))
+corner_marks(d, skills_box)
+label(d, S(38), T(394), "// SKILL MATRIX", 11)
 
-if len(points) > 1:
-    draw.line(
-        points,
-        fill=CYAN_SOFT,
-        width=1
-    )
+# Two-column matrix: cleaner and more compact.
+for i, skill in enumerate(SKILLS):
+    col = i % 2
+    row = i // 2
+    x = S(40 + col * 126)
+    y = T(428 + row * 39)
+    d.ellipse((x, y + T(4), x + S(7), y + T(11)), outline=CYAN_SOFT, width=1)
+    text(d, x + S(14), y, skill, 9, WHITE)
+    draw_line(d, x + S(14), y + T(22), x + S(113), y + T(22), CYAN_DIM)
 
-line(
-    draw,
-    S(38),
-    T(188),
-    S(300),
-    T(188),
-    CYAN_DIM
-)
+# small active-module footer
+label(d, S(40), T(588), "MODULES", 8)
+text(d, S(102), T(586), "09 ACTIVE", 9, CYAN, True)
 
-label(
-    draw,
-    S(38),
-    T(207),
-    "// LIVE CLOCK",
-    10
-)
+# ------------------------------------------------------------
+# UPPER CENTER-RIGHT — OPERATOR PROFILE
+# ------------------------------------------------------------
+profile = scaled((900, 28, 1645, 185), sx, sy)
+hud_panel(d, profile, S(18))
+corner_marks(d, profile)
+label(d, S(925), T(51), "// OPERATOR PROFILE", 10)
+text(d, S(925), T(78), NAME, 24, WHITE, True)
+text(d, S(925), T(115), TITLE, 14, CYAN, True)
+draw_line(d, S(925), T(142), S(1608), T(142), CYAN_DIM)
+label(d, S(925), T(156), f"{EDUCATION}  //  {COLLEGE}", 9)
 
-draw.text(
-    (S(38), T(230)),
-    current_time,
-    font=font(22, bold=True),
-    fill=WHITE
-)
+# decorative signal marks inside the profile box
+for i in range(5):
+    x = S(1540 + i * 13)
+    d.rectangle((x, T(57), x + S(6), T(62 + (i % 3) * 7)), fill=(145, 100, 255, 110))
 
-label(
-    draw,
-    S(38),
-    T(263),
-    f"{current_date}  //  {weekday}",
-    9
-)
+# ------------------------------------------------------------
+# CENTER LOWER — SESSION (NO CLOCK)
+# ------------------------------------------------------------
+session = scaled((845, 535, 1120, 705), sx, sy)
+hud_panel(d, session, S(16), fill=DARK_DEEP)
+corner_marks(d, session)
+label(d, S(868), T(556), "// SESSION", 10)
+label(d, S(868), T(582), "USER", 9)
+text(d, S(940), T(579), "UMESH_YENUMULA", 9, WHITE, True)
+label(d, S(868), T(611), "IDENTITY", 9)
+text(d, S(940), T(608), "DATA ANALYST × AI ENGINEER", 8, CYAN, True)
+label(d, S(868), T(640), "EDUCATION", 9)
+text(d, S(940), T(637), "IIT MADRAS", 10, WHITE, True)
+label(d, S(868), T(669), "SESSION", 9)
+text(d, S(940), T(666), "ACTIVE / PUBLIC", 9, GREEN, True)
 
-line(
-    draw,
-    S(38),
-    T(286),
-    S(300),
-    T(286),
-    CYAN_DIM
-)
+# ------------------------------------------------------------
+# RIGHT LOWER — LIVE GITHUB FEED (REAL VALUES)
+# ------------------------------------------------------------
+feed = scaled((1185, 320, 1635, 685), sx, sy)
+hud_panel(d, feed, S(16))
+corner_marks(d, feed)
+label(d, S(1210), T(343), "// LIVE GITHUB FEED", 10)
+label(d, S(1210), T(371), "PUBLIC SIGNAL", 8, GREEN)
 
-label(
-    draw,
-    S(38),
-    T(305),
-    "// PROFILE SIGNAL",
-    10
-)
-
-label(
-    draw,
-    S(38),
-    T(332),
-    f"REPOSITORIES    {github['repos']:02d}",
-    10
-)
-
-label(
-    draw,
-    S(38),
-    T(352),
-    f"FOLLOWERS       {github['followers']:02d}",
-    10
-)
-
-label(
-    draw,
-    S(38),
-    T(372),
-    "NETWORK         ONLINE",
-    10
-)
-
-
-# ============================================================
-# 02 — MODULES / SKILLS
-# LEFT LOWER
-# ============================================================
-
-modules_box = (
-    S(18),
-    T(420),
-    S(325),
-    T(625),
-)
-
-clipped_panel(
-    draw,
-    modules_box,
-    cut=S(14),
-    fill=DARK_SOFT,
-    outline=CYAN_SOFT
-)
-
-draw_corner_marks(draw, modules_box)
-
-label(
-    draw,
-    S(38),
-    T(442),
-    "// SKILL MATRIX",
-    11
-)
-
-skill_y = 470
-
-for i, skill in enumerate(SKILLS[:7]):
-
-    # small technical node
-    draw.ellipse(
-        (
-            S(40),
-            T(skill_y + 4),
-            S(46),
-            T(skill_y + 10)
-        ),
-        outline=CYAN_SOFT,
-        width=1
-    )
-
-    draw.text(
-        (S(56), T(skill_y)),
-        skill,
-        font=font(11),
-        fill=WHITE
-    )
-
-    line(
-        draw,
-        S(56),
-        T(skill_y + 21),
-        S(296),
-        T(skill_y + 21),
-        (65, 190, 255, 40)
-    )
-
-    skill_y += 30
-
-
-# ============================================================
-# 03 — SESSION
-# CENTER / LOWER
-# ============================================================
-
-session_box = (
-    S(845),
-    T(535),
-    S(1115),
-    T(705),
-)
-
-clipped_panel(
-    draw,
-    session_box,
-    cut=S(16),
-    fill=DARK,
-    outline=CYAN_SOFT
-)
-
-draw_corner_marks(draw, session_box)
-
-label(
-    draw,
-    S(868),
-    T(556),
-    "// SESSION",
-    10
-)
-
-label(
-    draw,
-    S(868),
-    T(582),
-    "USER",
-    9
-)
-
-draw.text(
-    (S(940), T(580)),
-    "UMESH_YENUMULA",
-    font=font(10, bold=True),
-    fill=WHITE
-)
-
-label(
-    draw,
-    S(868),
-    T(608),
-    "IDENTITY",
-    9
-)
-
-draw.text(
-    (S(940), T(606)),
-    TITLE,
-    font=font(9),
-    fill=CYAN
-)
-
-label(
-    draw,
-    S(868),
-    T(634),
-    "EDUCATION",
-    9
-)
-
-draw.text(
-    (S(940), T(632)),
-    "IIT MADRAS",
-    font=font(10, bold=True),
-    fill=WHITE
-)
-
-label(
-    draw,
-    S(868),
-    T(659),
-    "LOCAL TIME",
-    9
-)
-
-draw.text(
-    (S(940), T(657)),
-    f"{current_time} IST",
-    font=font(10, bold=True),
-    fill=GREEN
-)
-
-# activity bars
-for i in range(9):
-    height = 4 + ((i * 7) % 15)
-
-    draw.rectangle(
-        (
-            S(865 + i * 19),
-            T(688 - height),
-            S(874 + i * 19),
-            T(688)
-        ),
-        fill=CYAN_SOFT
-    )
-
-
-# ============================================================
-# 04 — PROFILE / IDENTITY
-# UPPER CENTER-RIGHT
-# ============================================================
-
-profile_box = (
-    S(1195),
-    T(28),
-    S(1660),
-    T(205),
-)
-
-clipped_panel(
-    draw,
-    profile_box,
-    cut=S(18),
-    fill=DARK_SOFT,
-    outline=CYAN_SOFT
-)
-
-draw_corner_marks(draw, profile_box)
-
-label(
-    draw,
-    S(1220),
-    T(52),
-    "// OPERATOR PROFILE",
-    11
-)
-
-title(
-    draw,
-    S(1220),
-    T(79),
-    NAME,
-    25
-)
-
-draw.text(
-    (S(1220), T(116)),
-    TITLE,
-    font=font(15, bold=True),
-    fill=CYAN
-)
-
-line(
-    draw,
-    S(1220),
-    T(148),
-    S(1625),
-    T(148),
-    CYAN_DIM
-)
-
-label(
-    draw,
-    S(1220),
-    T(163),
-    "BS DATA SCIENCE & APPLICATIONS  //  IIT MADRAS",
-    10
-)
-
-
-# ============================================================
-# 05 — REAL-TIME FEED
-# RIGHT / LOWER
-# ============================================================
-
-feed_box = (
-    S(1215),
-    T(435),
-    S(1635),
-    T(685),
-)
-
-clipped_panel(
-    draw,
-    feed_box,
-    cut=S(16),
-    fill=DARK_SOFT,
-    outline=CYAN_SOFT
-)
-
-draw_corner_marks(draw, feed_box)
-
-label(
-    draw,
-    S(1240),
-    T(457),
-    "// REAL-TIME FEED",
-    11
-)
-
-# feed lines based on actual profile information
 feed_items = [
-    ("TIME", current_time),
-    ("DATE", current_date),
-    ("GITHUB", "CONNECTED"),
-    ("REPOS", str(github["repos"])),
+    ("REPOSITORIES", f"{gh['repos']:02d}"),
+    ("FOLLOWERS", f"{gh['followers']:02d}"),
+    ("ACCOUNT", "CONNECTED"),
+    ("VISIBILITY", "PUBLIC"),
     ("STATUS", "OPERATIONAL"),
-    ("MODE", "LEARNING / BUILDING"),
 ]
 
-feed_y = 490
-
+y = 405
 for key, value in feed_items:
+    label(d, S(1210), T(y), key, 9)
+    text(d, S(1390), T(y - 1), value, 9, GREEN if value in {"CONNECTED", "OPERATIONAL"} else WHITE, True)
+    draw_line(d, S(1210), T(y + 21), S(1610), T(y + 21), CYAN_DIM)
+    y += 43
 
-    label(
-        draw,
-        S(1240),
-        T(feed_y),
-        key,
-        9
-    )
+label(d, S(1210), T(635), "ACTIVITY SIGNAL", 8)
+# Tiny synthetic visualizer for aesthetics only — not presented as real statistics.
+vals = [2, 6, 4, 10, 7, 13, 5, 9, 11, 7, 14, 9, 16, 12, 18, 10]
+for i, v in enumerate(vals):
+    x = S(1215 + i * 23)
+    d.rectangle((x, T(675 - v), x + S(10), T(675)), fill=CYAN_SOFT)
 
-    draw.text(
-        (S(1350), T(feed_y)),
-        value,
-        font=font(9, bold=True),
-        fill=WHITE
-    )
+# ------------------------------------------------------------
+# FAR RIGHT — MOTIVATION
+# ------------------------------------------------------------
+motivation = scaled((1665, 50, 1902, 315), sx, sy)
+hud_panel(d, motivation, S(16))
+corner_marks(d, motivation)
+label(d, S(1690), T(72), "// MOTIVATION", 9)
+text(d, S(1690), T(112), "DISCIPLINE", 18, WHITE, True)
+text(d, S(1740), T(141), "TODAY", 18, WHITE, True)
+draw_line(d, S(1700), T(183), S(1865), T(183), VIOLET_SOFT)
+text(d, S(1700), T(205), "FREEDOM", 18, WHITE, True)
+text(d, S(1730), T(234), "TOMORROW", 18, WHITE, True)
+label(d, S(1700), T(278), "BUILD  //  LEARN  //  EVOLVE", 7, CYAN)
 
-    line(
-        draw,
-        S(1240),
-        T(feed_y + 19),
-        S(1605),
-        T(feed_y + 19),
-        (65, 190, 255, 35)
-    )
+# ------------------------------------------------------------
+# MICRO HUD DETAILS
+# ------------------------------------------------------------
+label(d, S(855), T(482), "FOCUS  >  EXECUTE  >  SUCCEED", 8)
+label(d, S(1745), T(335), "SYS // PROFILE // ACTIVE", 7)
+label(d, S(35), T(700), "NODE 01", 7)
+label(d, S(95), T(700), "SECURE", 7, GREEN)
+label(d, S(1810), T(24), "LIVE", 7, GREEN)
 
-    feed_y += 31
-
-
-# tiny activity graph
-graph_x = S(1240)
-graph_y = T(668)
-
-graph_points = []
-
-for i in range(95):
-    px = graph_x + S(i * 3.6)
-
-    values = [0, 3, -2, 4, 1, -1, 5, -3, 2, 1]
-    offset = values[i % len(values)]
-
-    py = graph_y + T(offset)
-
-    graph_points.append((px, py))
-
-draw.line(
-    graph_points,
-    fill=CYAN_SOFT,
-    width=1
-)
-
-
-# ============================================================
-# 06 — MOTIVATION
-# FAR RIGHT
-# ============================================================
-
-motivation_box = (
-    S(1665),
-    T(50),
-    S(1902),
-    T(315),
-)
-
-clipped_panel(
-    draw,
-    motivation_box,
-    cut=S(16),
-    fill=DARK_SOFT,
-    outline=CYAN_SOFT
-)
-
-draw_corner_marks(draw, motivation_box)
-
-label(
-    draw,
-    S(1690),
-    T(72),
-    "// MOTIVATION",
-    10
-)
-
-draw.text(
-    (S(1690), T(115)),
-    "DISCIPLINE",
-    font=font(19, bold=True),
-    fill=WHITE
-)
-
-draw.text(
-    (S(1737), T(145)),
-    "TODAY",
-    font=font(19, bold=True),
-    fill=WHITE
-)
-
-line(
-    draw,
-    S(1700),
-    T(185),
-    S(1865),
-    T(185),
-    CYAN_DIM
-)
-
-draw.text(
-    (S(1700), T(208)),
-    "FREEDOM",
-    font=font(19, bold=True),
-    fill=WHITE
-)
-
-draw.text(
-    (S(1730), T(238)),
-    "TOMORROW",
-    font=font(19, bold=True),
-    fill=WHITE
-)
-
-# small signal mark
-draw.ellipse(
-    (
-        S(1777),
-        T(280),
-        S(1787),
-        T(290)
-    ),
-    outline=CYAN_SOFT,
-    width=1
-)
-
-line(
-    draw,
-    S(1705),
-    T(285),
-    S(1760),
-    T(285),
-    CYAN_DIM
-)
-
-line(
-    draw,
-    S(1805),
-    T(285),
-    S(1860),
-    T(285),
-    CYAN_DIM
-)
-
-
-# ============================================================
-# 07 — MICRO HUD DETAILS
-# ============================================================
-
-# center technical line
-line(
-    draw,
-    S(858),
-    T(503),
-    S(1050),
-    T(503),
-    CYAN_DIM
-)
-
-label(
-    draw,
-    S(870),
-    T(481),
-    "FOCUS  >  EXECUTE  >  SUCCEED",
-    9
-)
-
-# tiny coordinate readout
-label(
-    draw,
-    S(1750),
-    T(332),
-    "SYS // PROFILE // ACTIVE",
-    8
-)
-
-label(
-    draw,
-    S(35),
-    T(698),
-    "NODE 01",
-    8
-)
-
-label(
-    draw,
-    S(95),
-    T(698),
-    "SECURE",
-    8,
-    GREEN
-)
-
-# tiny top-right signal
-label(
-    draw,
-    S(1810),
-    T(25),
-    "LIVE",
-    8,
-    GREEN
-)
-
-
-# ============================================================
-# COMPOSITE
-# ============================================================
-
-result = Image.alpha_composite(base, overlay)
-
-# Slight sharpening after compositing
-result = result.convert("RGB")
-
-result.save(
-    OUTPUT_IMAGE,
-    quality=95
-)
+result = Image.alpha_composite(base, layer).convert("RGB")
+result.save(OUTPUT_IMAGE, quality=95)
 
 print("==============================================")
 print("HUD GENERATED SUCCESSFULLY")
 print(f"Output: {OUTPUT_IMAGE}")
-print(f"IST: {current_time}")
-print(f"Date: {current_date}")
-print(f"GitHub repositories: {github['repos']}")
+print(f"GitHub repositories: {gh['repos']}")
+print(f"GitHub followers: {gh['followers']}")
+print("Clock/date intentionally omitted from the image.")
 print("==============================================")
